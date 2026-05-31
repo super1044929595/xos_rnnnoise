@@ -20,8 +20,8 @@
 #define RL_MINERVA_KWS_DECIM_STRIDE       3U
 #define RL_MINERVA_KWS_MFCC_COUNT         12U
 #define RL_MINERVA_KWS_MEL_BINS           20U
-#define RL_MINERVA_KWS_MEL_SUMMARY        16U
-#define RL_MINERVA_KWS_TRIGGER_THRESHOLD  60U
+#define RL_MINERVA_KWS_MEL_SUMMARY        12U
+#define RL_MINERVA_KWS_TRIGGER_THRESHOLD  40U
 #define RL_MINERVA_KWS_SILENCE_BASELINE   14U
 #define RL_MINERVA_KWS_SILENCE_MARGIN     8U
 #define RL_MINERVA_KWS_SMOOTH_SHIFT       2U
@@ -68,7 +68,7 @@ static volatile uint16_t s_rl_minerva_tail = 0U;
 static volatile uint32_t s_rl_minerva_dropped = 0U;
 static int16_t s_rl_minerva_frame[RL_MINERVA_KWS_FRAME_SAMPLES];
 static int32_t s_rl_minerva_fft[RL_MINERVA_KWS_FFT_SIZE];
-static uint32_t s_rl_minerva_mel[RL_MINERVA_KWS_MEL_BINS];
+static uint64_t s_rl_minerva_mel[RL_MINERVA_KWS_MEL_BINS];
 static mnv_act_t s_rl_minerva_input[RL_MINERVA_KWS_INPUT_FEATURES];
 static mnv_act_t s_rl_minerva_output[MNV_OUTPUT_SIZE];
 static mnv_act_t s_rl_minerva_output_smooth[MNV_OUTPUT_SIZE];
@@ -232,7 +232,7 @@ static void rl_minerva_kws_extract_features(const int16_t *frame)
         int32_t acc = 0;
 
         for (band = 0; band < RL_MINERVA_KWS_MEL_BINS; band++) {
-            uint8_t logv = rl_minerva_kws_log2_u32((s_rl_minerva_mel[band] >> 12) + 1U);
+            uint8_t logv = rl_minerva_kws_log2_u32((uint32_t)((s_rl_minerva_mel[band] >> 12) + 1ULL));
             acc += (int32_t)s_rl_minerva_dct_q8[i][band] * (int32_t)logv;
         }
 
@@ -299,10 +299,29 @@ static void rl_minerva_kws_extract_features(const int16_t *frame)
     s_rl_minerva_input[18] = (mnv_act_t)rl_minerva_kws_clamp_s8((int32_t)rl_minerva_kws_log2_u32(high_energy + 1U) * 8 - 64);
     s_rl_minerva_input[19] = (mnv_act_t)rl_minerva_kws_clamp_s8((int32_t)((centroid_den == 0U) ? 0U : ((centroid_num * 127U) / (centroid_den * (RL_MINERVA_KWS_FFT_SIZE / 2U)))));
 
+    /* Feature 20: spectral rolloff bin */
+    s_rl_minerva_input[20] = (mnv_act_t)rl_minerva_kws_clamp_s8(
+        (int32_t)((rolloff_bin * 127) / (RL_MINERVA_KWS_FFT_SIZE / 2U)));
+
+    /* Feature 21: spectral flux */
+    s_rl_minerva_input[21] = (mnv_act_t)rl_minerva_kws_clamp_s8(
+        (int32_t)(rl_minerva_kws_log2_u32(flux + 1U) * 8 - 64));
+
+    /* Feature 22: peak-to-rms ratio */
+    {
+        uint32_t avg_energy = energy_acc / (RL_MINERVA_KWS_FRAME_SAMPLES / RL_MINERVA_KWS_DECIM_STRIDE);
+        s_rl_minerva_input[22] = (mnv_act_t)rl_minerva_kws_clamp_s8(
+            (peak == 0U) ? 0 : (int32_t)((avg_energy * 127) / peak));
+    }
+
+    /* Feature 23: total spectral energy */
+    s_rl_minerva_input[23] = (mnv_act_t)rl_minerva_kws_clamp_s8(
+        (int32_t)(rl_minerva_kws_log2_u32(rolloff_den + 1U) * 8 - 64));
+
     for (band = 0U; band < RL_MINERVA_KWS_MEL_SUMMARY; band++) {
         uint16_t src = (uint16_t)((uint32_t)band * RL_MINERVA_KWS_MEL_BINS / RL_MINERVA_KWS_MEL_SUMMARY);
         uint16_t src_next = (uint16_t)(((uint32_t)(band + 1U) * RL_MINERVA_KWS_MEL_BINS) / RL_MINERVA_KWS_MEL_SUMMARY);
-        uint32_t acc = 0U;
+        uint64_t acc = 0ULL;
         uint16_t count = 0U;
         uint8_t logv;
 
@@ -315,8 +334,8 @@ static void rl_minerva_kws_extract_features(const int16_t *frame)
             count = 1U;
         }
 
-        logv = rl_minerva_kws_log2_u32(((acc / count) >> 12) + 1U);
-        s_rl_minerva_input[20U + band] = (mnv_act_t)((logv > 15U) ? 63 : ((int16_t)logv * 8 - 64));
+        logv = rl_minerva_kws_log2_u32((uint32_t)(((acc / (uint64_t)count) >> 12) + 1ULL));
+        s_rl_minerva_input[24U + band] = (mnv_act_t)((logv > 15U) ? 63 : ((int16_t)logv * 8 - 64));
     }
 }
 

@@ -2,7 +2,6 @@
 
 #include <string.h>
 #include <stdlib.h>
-#include "main.h"
 
 #ifndef RL2812_STM32_USE_HAL
 #define RL2812_STM32_USE_HAL 1
@@ -343,4 +342,281 @@ void RL2812_SendData(RL2812_STRIP* strip)
     strip->tx_done = 1U;
     strip->tx_busy = 0U;
 #endif
+}
+
+/*=============================================================================
+ * LED Effect: Global State
+ *============================================================================*/
+RL_RGB_BreathInfo rl_rgb_breathinfo;
+RL_RGB_MarqueInfo rl_rgb_marqueinfo;
+RL_RGB_MoveInfo   rl_rgb_moveinfo;
+RL_RGB_FadeInfo   rl_rgb_fadeinfo;
+
+static RL_UI_LED_Effect_Mode s_last_led_effect = RL_UI_LED_EFFECT_NONE;
+
+/*=============================================================================
+ * LED Effect: Utility Functions
+ *============================================================================*/
+
+void RL2812_HSVtoRGB(uint16_t h, uint8_t s, uint8_t v, uint8_t* r, uint8_t* g, uint8_t* b)
+{
+    float hh, p, q, t, ff;
+    long i;
+
+    if(r == NULL || g == NULL || b == NULL){
+        return;
+    }
+
+    if(s == 0){
+        *r = v;
+        *g = v;
+        *b = v;
+        return;
+    }
+
+    hh = (float)h / 360.0f * 6.0f;
+    i = (long)hh;
+    ff = hh - (float)i;
+    p = (float)v * (1.0f - (float)s / 100.0f);
+    q = (float)v * (1.0f - (float)s / 100.0f * ff);
+    t = (float)v * (1.0f - (float)s / 100.0f * (1.0f - ff));
+
+    switch(i){
+        case 0: *r = v;        *g = (uint8_t)t; *b = (uint8_t)p; break;
+        case 1: *r = (uint8_t)q; *g = v;        *b = (uint8_t)p; break;
+        case 2: *r = (uint8_t)p; *g = v;        *b = (uint8_t)t; break;
+        case 3: *r = (uint8_t)p; *g = (uint8_t)q; *b = v;        break;
+        case 4: *r = (uint8_t)t; *g = (uint8_t)p; *b = v;        break;
+        case 5: *r = v;        *g = (uint8_t)p; *b = (uint8_t)q; break;
+        default: break;
+    }
+}
+
+/*=============================================================================
+ * LED Effect: Init
+ *============================================================================*/
+void RL2812_RGB_Init(void)
+{
+    memset(&rl_rgb_breathinfo, 0, sizeof(RL_RGB_BreathInfo));
+    memset(&rl_rgb_marqueinfo, 0, sizeof(RL_RGB_MarqueInfo));
+    memset(&rl_rgb_moveinfo,    0, sizeof(RL_RGB_MoveInfo));
+    memset(&rl_rgb_fadeinfo,    0, sizeof(RL_RGB_FadeInfo));
+
+    rl_rgb_breathinfo.g = 0;
+    rl_rgb_breathinfo.r = 80;
+    rl_rgb_breathinfo.b = 0;
+    rl_rgb_breathinfo.brightness = 0;
+    rl_rgb_breathinfo.enable = 0;
+    rl_rgb_breathinfo.cycle_count = 0;
+
+    rl_rgb_marqueinfo.position = 0;
+    rl_rgb_marqueinfo.cycle_count = 0;
+    rl_rgb_moveinfo.state = 0;
+    rl_rgb_moveinfo.basecnt = 0;
+    rl_rgb_fadeinfo.hue = 0;
+    rl_rgb_fadeinfo.position = 0;
+    rl_rgb_fadeinfo.basecnt = 0;
+
+    s_last_led_effect = RL_UI_LED_EFFECT_NONE;
+}
+
+/*=============================================================================
+ * LED Effect: Timer Update (call periodically, e.g. every 10ms)
+ *============================================================================*/
+void RL2812_RGB_TimerUpdate(RL2812_STRIP* strip, RL_UI_LED_Effect_Mode led_effect)
+{
+    if(strip == NULL){
+        return;
+    }
+
+    /* Reset effect state when effect mode changes */
+    if(s_last_led_effect != led_effect){
+        rl_rgb_breathinfo.brightness = 0;
+        rl_rgb_breathinfo.enable = 0;
+        rl_rgb_breathinfo.cycle_count = 0;
+        rl_rgb_marqueinfo.position = 0;
+        rl_rgb_marqueinfo.cycle_count = 0;
+        rl_rgb_moveinfo.state = 0;
+        rl_rgb_moveinfo.basecnt = 0;
+        rl_rgb_fadeinfo.hue = 0;
+        rl_rgb_fadeinfo.position = 0;
+        rl_rgb_fadeinfo.basecnt = 0;
+        s_last_led_effect = led_effect;
+    }
+
+    switch(led_effect)
+    {
+        case RL_UI_LED_EFFECT_NONE:
+            return;
+
+        case RL_UI_LED_EFFECT_BREATH:
+            if((rl_rgb_breathinfo.cycle_count++ % 2) != 0){
+                return;
+            }
+            if(rl_rgb_breathinfo.enable == 0){
+                if(rl_rgb_breathinfo.brightness < MAX_BRIGHTNESS){
+                    rl_rgb_breathinfo.brightness += 2;
+                }else{
+                    rl_rgb_breathinfo.enable = 1;
+                }
+            }else{
+                if(rl_rgb_breathinfo.brightness > 2){
+                    rl_rgb_breathinfo.brightness -= 2;
+                }else{
+                    rl_rgb_breathinfo.brightness = 0;
+                    rl_rgb_breathinfo.enable = 0;
+                }
+            }
+            rl_rgb_breathinfo.step = (float)rl_rgb_breathinfo.brightness / (float)MAX_BRIGHTNESS;
+            RL2812_SetAll(strip,
+                (uint8_t)((float)rl_rgb_breathinfo.g * rl_rgb_breathinfo.step),
+                (uint8_t)((float)rl_rgb_breathinfo.r * rl_rgb_breathinfo.step),
+                (uint8_t)((float)rl_rgb_breathinfo.b * rl_rgb_breathinfo.step));
+            RL2812_SendData(strip);
+            break;
+
+        case RL_UI_LED_EFFECT_MARQUEE:
+            if((rl_rgb_marqueinfo.cycle_count++ % 3) != 0){
+                return;
+            }
+            for(uint16_t i = 0; i < strip->led_num; i++){
+                uint16_t led_hue = (uint16_t)((rl_rgb_marqueinfo.position * 18U + i * 360U / strip->led_num) % 360U);
+                uint8_t r, g, b;
+                RL2812_HSVtoRGB(led_hue, 100, 65, &r, &g, &b);
+                RL2812_SetPixel(strip, i, g, r, b);
+            }
+            RL2812_SendData(strip);
+            rl_rgb_marqueinfo.position++;
+            if(rl_rgb_marqueinfo.position >= 20U){
+                rl_rgb_marqueinfo.position = 0;
+            }
+            break;
+
+        case RL_UI_LED_EFFECT_I2S_FLASH:
+            if((rl_rgb_moveinfo.basecnt++ % 2U) != 0U){
+                return;
+            }
+            {
+                /* Slow down: only advance state every N visual frames */
+                static uint8_t i2s_slow_cnt = 0U;
+                i2s_slow_cnt++;
+                if(i2s_slow_cnt < 4U){
+                    return;
+                }
+                i2s_slow_cnt = 0U;
+                uint16_t half_leds = strip->led_num / 2U;
+                uint16_t sweep_steps = (strip->led_num + 1U) / 2U;
+
+                if(rl_rgb_moveinfo.state < sweep_steps){
+                    RL2812_SetAll(strip, 0, 0, 0);
+                    for(uint16_t d = 0; d <= rl_rgb_moveinfo.state; d++){
+                        uint8_t v = 0U;
+                        uint8_t r, g, b;
+                        uint16_t lit_count = (uint16_t)rl_rgb_moveinfo.state + 1U;
+                        uint16_t left_idx;
+                        uint16_t right_idx;
+
+                        if(d + 1U == lit_count){
+                            v = 100U;
+                        }else if(d + 2U == lit_count){
+                            v = 72U;
+                        }else if(d + 3U == lit_count){
+                            v = 45U;
+                        }else{
+                            v = 26U;
+                        }
+
+                        /* Audi-style sequential sweep, fixed cool-white RGB */
+                        r = v;
+                        g = v;
+                        b = (uint8_t)((uint16_t)v * 92U / 100U);
+
+                        if((strip->led_num & 0x1U) != 0U){
+                            if(d == 0U){
+                                RL2812_SetPixel(strip, half_leds, g, r, b);
+                                continue;
+                            }
+                            left_idx = half_leds - d;
+                            right_idx = half_leds + d;
+                        }else{
+                            left_idx = (half_leds - 1U) - d;
+                            right_idx = half_leds + d;
+                        }
+
+                        RL2812_SetPixel(strip, left_idx, g, r, b);
+                        if(right_idx < strip->led_num){
+                            RL2812_SetPixel(strip, right_idx, g, r, b);
+                        }
+                    }
+                    RL2812_SendData(strip);
+                }else if(rl_rgb_moveinfo.state == sweep_steps){
+                    RL2812_SetAll(strip, 100U, 100U, 100U);
+                    RL2812_SendData(strip);
+                }else{
+                    RL2812_SetAll(strip, 0U, 0U, 0U);
+                    RL2812_SendData(strip);
+                }
+                rl_rgb_moveinfo.state++;
+                if(rl_rgb_moveinfo.state > (sweep_steps + 1U)){
+                    rl_rgb_moveinfo.state = 0U;
+                }
+            }
+            break;
+
+        case RL_UI_LED_EFFECT_ALLON:
+            if((rl_rgb_moveinfo.basecnt++ % 2U) != 0U){
+                return;
+            }
+            RL2812_SetAll(strip, 0, 0, 0);
+            for(uint16_t i = 0; i < strip->led_num; i++){
+                uint16_t pos = (uint16_t)((i + rl_rgb_moveinfo.state) % strip->led_num);
+                uint8_t r, g, b;
+                uint8_t v;
+
+                if(i == 0U){
+                    v = 100U;
+                }else if(i == 1U){
+                    v = 55U;
+                }else if(i == 2U){
+                    v = 25U;
+                }else{
+                    v = 0U;
+                }
+
+                if(v == 0U){
+                    continue;
+                }
+
+                RL2812_HSVtoRGB((uint16_t)((pos * 360U) / strip->led_num), 100, v, &r, &g, &b);
+                RL2812_SetPixel(strip, pos, g, r, b);
+            }
+            RL2812_SendData(strip);
+            rl_rgb_moveinfo.state++;
+            if(rl_rgb_moveinfo.state >= strip->led_num){
+                rl_rgb_moveinfo.state = 0U;
+            }
+            break;
+
+        case RL_UI_LED_EFFECT_RAINBOW:
+            for(uint16_t i = 0; i < strip->led_num; i++){
+                uint16_t led_hue = (rl_rgb_fadeinfo.hue + (i * 360U / strip->led_num)) % 360U;
+                uint8_t r, g, b;
+                RL2812_HSVtoRGB(led_hue, 100, 60, &r, &g, &b);
+                RL2812_SetPixel(strip, i, g, r, b);
+            }
+            RL2812_SendData(strip);
+            rl_rgb_fadeinfo.hue = (rl_rgb_fadeinfo.hue + 6) % 360;
+            break;
+
+        case RL_UI_LED_EFFECT_AUDIO:
+            /* Audio spectrum effect requires FFT and I2S audio input.
+             * Placeholder: solid blue all LEDs.
+             * To enable full audio spectrum, integrate your FFT and I2S pipeline. */
+            RL2812_SetAll(strip, 0U, 0U, 20U);
+            RL2812_SendData(strip);
+            break;
+
+        default:
+            break;
+    }
 }

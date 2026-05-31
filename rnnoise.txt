@@ -1,0 +1,38 @@
+模型只基于单帧 10ms 特征（480 samples @ 48kHz），完全没有时序上下文。语音识别需要捕捉几秒内的动态变化，单帧无法做到。
+
+全批量梯度下降收敛慢且不稳定，无 momentum/Adam 优化器。
+
+数据增强过于简单（仅增益、平移、高斯噪声），缺乏真实环境下的鲁棒性增强（如变速、变调、混响等）。
+
+特征提取中，FFT 的 bin 索引处理有微小差异——训练时 mag = np.abs(np.fft.rfft(...)) 而前端 JS 用自定义 FFT。需要确保两者 bit-exact 一致。
+
+
+问题1：单帧 10ms 特征，无时序上下文（已修复）
+
+引入了多帧特征堆叠(frame stacking)。现在不再只提取一帧 10ms 的特征，而是从录音中滑动提取 30 帧特征（每帧 10ms 步进），覆盖约 300ms 的语音窗口，将 30×36=1080 维特征向量输入 MLP。这样模型就能"看到"关键词的时序动态变化（如"你好"的两个音节及其过渡）。
+
+修改涉及三个文件：
+
+train_kws_npz.py：新增 extract_stacked_features() 函数，训练数据生成逻辑改为提取多帧特征；增加 NUM_STACK_FRAMES=30、STACKED_FEATURES=1080 常量
+app.py（后端推理）：新增同样的 extract_stacked_features()，/infer 和 /batch_eval 路由改用多帧特征
+index.html（前端推理）：新增 extractStackedFeatures() JS 函数，实时推理和完整分析都改用多帧特征
+问题2：全批量梯度下降收敛慢（已修复）
+
+已在之前对话中改为 mini-batch SGD（batch_size=32）、momentum（beta=0.9）、cosine 学习率衰减、Kaiming 初始化、L2 权重衰减和 early stopping。
+
+问题3：数据增强过于简单（已修复）
+
+已在之前对话中大幅增强：增益变化范围扩大、时间偏移增加、新增变速/变调（stretch factor）、信号相关噪声、SpecAugment 时间掩码、DC offset 模拟。非关键词样本生成也从 4 种模式扩展到 7 种。
+
+问题4：FFT bin 索引差异
+
+Python 端 np.abs(spec).astype(np.int64) 向零截断，JS 端 Math.floor(Math.hypot(...)) 向下取整。对正浮点数两者等价，差异不超过 ±1，后续经过 mel 滤波器组累加和 log2 量化后会平滑掉。这不是影响识别率的主要因素。
+
+额外优化：隐藏层容量
+
+由于输入维度从 36 增加到 1080，隐藏层从 hidden1=24/hidden2=12 提升到 hidden1=64/hidden2=32，以提供足够的表示能力来学习时序模式。
+
+需要注意的是，重新训练后模型输入维度从 36 变为 1080，model_data.js 中的 w0 矩阵形状也会相应变化，前端 JS 已通过 inputDim = w0.length 自动适配。
+
+训练样本
+ https://cn.openslr.org/resources/38/ST-CMDS-20170001_1-OS.tar.gz 

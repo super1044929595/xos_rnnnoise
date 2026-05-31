@@ -20,7 +20,10 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
+// #define ENABLE_TOUCHGFX  // 取消注释以启用 TouchGFX GUI
+#ifdef ENABLE_TOUCHGFX
 #include "app_touchgfx.h"
+#endif
 #include "app_config.h"
 #include "rl_minerva_kws.h"
 #include "diag_log.h"
@@ -77,6 +80,7 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+#ifdef ENABLE_TOUCHGFX
 /* Definitions for TouchGFXTask */
 osThreadId_t TouchGFXTaskHandle;
 const osThreadAttr_t TouchGFXTask_attributes = {
@@ -84,6 +88,7 @@ const osThreadAttr_t TouchGFXTask_attributes = {
   .stack_size = 4096 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+#endif
 /* USER CODE BEGIN PV */
 static PCM_DATA_TYPE mic_rx_buf[960];
 static volatile uint32_t mic_diag_dma_blocks = 0U;
@@ -103,10 +108,14 @@ void MX_TIM3_Init(void);
 void MX_I2S3_Init(void);
 void MX_USART1_UART_Init(void);
 void StartDefaultTask(void *argument);
+#ifdef ENABLE_TOUCHGFX
 extern void TouchGFX_Task(void *argument);
+#endif
 
 /* USER CODE BEGIN PFP */
+#ifdef ENABLE_TOUCHGFX
 extern void TouchGFX_TickHandler(uint8_t PinStatus);
+#endif
 __weak uint8_t BSP_QSPI_EnableMemoryMappedMode(void);
 static void MicDiag_ProcessBlock(const PCM_DATA_TYPE *buf, uint16_t count);
 /* USER CODE END PFP */
@@ -172,9 +181,11 @@ int main(void)
   MX_TIM3_Init();
   MX_USART1_UART_Init();
   MX_QUADSPI_Init();
+#ifdef ENABLE_TOUCHGFX
   MX_TouchGFX_Init();
   /* Call PreOsInit function */
   MX_TouchGFX_PreOSInit();
+#endif
   /* USER CODE BEGIN 2 */
   RL_SDK_Bridge_Init();
   DiagLog_Init();
@@ -205,7 +216,7 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* creation of TouchGFXTask */
-  TouchGFXTaskHandle = osThreadNew(TouchGFX_Task, NULL, &TouchGFXTask_attributes);
+  //TouchGFXTaskHandle = osThreadNew(TouchGFX_Task, NULL, &TouchGFXTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -340,7 +351,7 @@ void MX_I2S3_Init(void)
   hi2s3.Init.Standard = I2S_STANDARD_PHILIPS;
   hi2s3.Init.DataFormat = I2S_DATAFORMAT_16B;
   hi2s3.Init.MCLKOutput = I2S_MCLKOUTPUT_DISABLE;
-  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_16K;
+  hi2s3.Init.AudioFreq = I2S_AUDIOFREQ_48K;
   hi2s3.Init.CPOL = I2S_CPOL_LOW;
   hi2s3.Init.ClockSource = I2S_CLOCK_PLL;
   hi2s3.Init.FullDuplexMode = I2S_FULLDUPLEXMODE_DISABLE;
@@ -624,51 +635,97 @@ __weak uint8_t BSP_QSPI_EnableMemoryMappedMode(void)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-  uint32_t last_blocks = 0U;
   RL_MinervaKws_Init();
   if (HAL_I2S_Receive_DMA(&hi2s3, (uint16_t*)mic_rx_buf, (uint16_t)(sizeof(mic_rx_buf) / sizeof(uint16_t))) != HAL_OK)
   {
     Error_Handler();
   }
-  /* Infinite loop */
+
+  /* Run MARQUEE effect via unified timer API */
+  RL_SDK_Bridge_SetLedEffect(RL_UI_LED_EFFECT_MARQUEE);
+
+  /* Chasing flow on KWS trigger state */
+  uint32_t chase_tick      = 0U;
+  uint8_t  chase_active    = 0U;
+  uint8_t  chase_index     = 0U;
+  uint8_t  chase_dir       = 0U;   /* 0=forward, 1=backward */
+  #define CHASE_STEP_MS    80U     /* Speed per step */
+  #define CHASE_LED_NUM    8U
+  uint8_t chase_rounds_left = 0U;  /* Forward + backward = 1 round */
+  #define LED_TIMER_MS     20U     /* LED effect update period */
+
   for(;;)
   {
     RL_MinervaKwsResult kws = RL_MinervaKws_GetResult();
     uint32_t now = HAL_GetTick();
-    uint32_t peak = mic_diag_last_peak;
-    uint32_t blocks = mic_diag_dma_blocks;
 
+    /* Keyword trigger: start chasing flow, override I2S_FLASH */
     if (kws.state == RL_MINERVA_KWS_STATE_TRIGGERED)
     {
-      RL_SDK_Bridge_SetDiagColor(0x20U, 0x20U, 0x00U);
+      chase_active      = 1U;
+      chase_index       = 0U;
+      chase_dir         = 0U;
+      chase_tick        = now;
+      chase_rounds_left = 3U;
+      RL_SDK_Bridge_Clear();
+      RL_SDK_Bridge_SetPixel(0U, 0x00U, 0x30U, 0x00U);
+      chase_index = 1U;
     }
-    else if ((now - mic_diag_last_tick) > 1000U || blocks == last_blocks)
+
+    /* ----- Chasing flow animation (overrides I2S_FLASH) ----- */
+    if (chase_active != 0U)
     {
-      RL_SDK_Bridge_SetDiagColor(0x00U, 0x00U, 0x20U);
-    }
-    else if (peak > 12000U)
-    {
-      RL_SDK_Bridge_SetDiagColor(0x00U, 0x20U, 0x00U);
-    }
-    else if (peak > 1000U)
-    {
-      RL_SDK_Bridge_SetDiagColor(0x10U, 0x00U, 0x00U);
+      if ((now - chase_tick) >= CHASE_STEP_MS)
+      {
+        chase_tick = now;
+
+        if (chase_dir == 0U)
+        {
+          RL_SDK_Bridge_Clear();
+          RL_SDK_Bridge_SetPixel(chase_index, 0x00U, 0x30U, 0x00U);
+          chase_index++;
+
+          if (chase_index >= CHASE_LED_NUM)
+          {
+            chase_dir = 1U;
+            chase_index = CHASE_LED_NUM - 1U;
+          }
+        }
+        else
+        {
+          if (chase_index > 0U)
+          {
+            chase_index--;
+          }
+          RL_SDK_Bridge_Clear();
+          RL_SDK_Bridge_SetPixel(chase_index, 0x00U, 0x30U, 0x00U);
+
+          if (chase_index == 0U)
+          {
+            chase_rounds_left--;
+            if (chase_rounds_left == 0U)
+            {
+              RL_SDK_Bridge_Clear();
+              chase_active = 0U;
+              /* Resume MARQUEE */
+              RL_SDK_Bridge_SetLedEffect(RL_UI_LED_EFFECT_MARQUEE);
+            }
+            else
+            {
+              chase_dir = 0U;
+              chase_index = 1U;
+            }
+          }
+        }
+      }
     }
     else
     {
-      RL_SDK_Bridge_SetDiagColor(0x04U, 0x00U, 0x00U);
+      /* ----- I2S_FLASH (Audi-style sequential sweep) ----- */
+      RL_SDK_Bridge_LedTimerUpdate();
     }
 
-    printf("[mic] blocks=%lu samples=%lu peak=%lu kws_state=%u kw=%u conf=%u drop=%lu\r\n",
-           (unsigned long)blocks,
-           (unsigned long)mic_diag_last_samples,
-           (unsigned long)peak,
-           (unsigned)kws.state,
-           (unsigned)kws.keyword_index,
-           (unsigned)kws.confidence,
-           (unsigned long)kws.dropped_samples);
-    last_blocks = blocks;
-    osDelay(100);
+    osDelay(LED_TIMER_MS);
   }
   /* USER CODE END 5 */
 }

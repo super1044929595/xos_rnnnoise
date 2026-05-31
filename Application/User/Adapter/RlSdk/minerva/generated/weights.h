@@ -5,11 +5,11 @@
 
 #define MNV_INPUT_SIZE    36U
 #define MNV_NUM_LAYERS    3U
-#define MNV_LAYER_0_SIZE  16U
-#define MNV_LAYER_1_SIZE  8U
-#define MNV_LAYER_2_SIZE  3U
-#define MNV_OUTPUT_SIZE   3U
-#define MNV_ENCRYPTED_LEN 755U
+#define MNV_LAYER_0_SIZE  48U
+#define MNV_LAYER_1_SIZE  24U
+#define MNV_LAYER_2_SIZE  4U
+#define MNV_OUTPUT_SIZE   4U
+#define MNV_ENCRYPTED_LEN 3052U
 
 extern const mnv_model_t         mnv_model;
 extern const mnv_crypto_header_t mnv_crypto_hdr;

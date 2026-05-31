@@ -9,6 +9,7 @@ extern DMA_HandleTypeDef hdma_tim3_ch3;
 
 static RL2812_STRIP* g_status_strip;
 static uint8_t g_minerva_ready;
+static RL_UI_LED_Effect_Mode g_led_effect = RL_UI_LED_EFFECT_NONE;
 
 static void RL_SDK_Bridge_ShowFrame(uint8_t active_index, uint8_t g, uint8_t r, uint8_t b)
 {
@@ -53,6 +54,7 @@ void RL_SDK_Bridge_Init(void)
         Error_Handler();
     }
 
+    /* TIM3 on APB1: APB1=50MHz, timer clk = APB1*2 = 100MHz (ST timer doubler) */
     RL2812_STM32H7_AttachTimerDmaAuto(g_status_strip,
                                       &htim3,
                                       &hdma_tim3_ch3,
@@ -63,6 +65,8 @@ void RL_SDK_Bridge_Init(void)
     {
         g_minerva_ready = RL_Minerva_RunSelfTest() ? 1U : 0U;
     }
+
+    RL2812_RGB_Init();
 
     RL_SDK_Bridge_ShowBootPattern();
 
@@ -92,4 +96,40 @@ void RL_SDK_Bridge_SetDiagColor(uint8_t g, uint8_t r, uint8_t b)
 
     RL2812_SetAll(g_status_strip, g, r, b);
     RL2812_SendData(g_status_strip);
+}
+
+void RL_SDK_Bridge_SetPixel(uint8_t index, uint8_t g, uint8_t r, uint8_t b)
+{
+    if (g_status_strip == NULL || index >= 8U)
+    {
+        return;
+    }
+
+    RL2812_SetPixel(g_status_strip, index, g, r, b);
+    RL2812_SendData(g_status_strip);
+}
+
+void RL_SDK_Bridge_Clear(void)
+{
+    if (g_status_strip == NULL)
+    {
+        return;
+    }
+
+    RL2812_Clear(g_status_strip);
+}
+
+void RL_SDK_Bridge_SetLedEffect(RL_UI_LED_Effect_Mode effect)
+{
+    g_led_effect = effect;
+}
+
+void RL_SDK_Bridge_LedTimerUpdate(void)
+{
+    if (g_status_strip == NULL)
+    {
+        return;
+    }
+
+    RL2812_RGB_TimerUpdate(g_status_strip, g_led_effect);
 }

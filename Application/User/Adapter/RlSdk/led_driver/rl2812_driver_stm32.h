@@ -5,20 +5,16 @@
 extern "C" {
 #endif
 
-#if defined(USE_HAL_DRIVER)
-#include "stm32f4xx_hal.h"
-#endif
-
 #include <stdint.h>
 #include <stddef.h>
+#include "rl2812_driver_stm32_port.h"
 
 /*
  * STM32 backend switch:
  *   Define RL2812_BACKEND_STM32 before including rl2812_driver.h
  *
  * Integration notes:
- * 1. Include your STM32 HAL headers in the build unit that compiles
- *    rl2812_driver_stm32.c, or provide them through rl2812_driver_stm32_port.h.
+ * 1. rl2812_driver_stm32_port.h brings in STM32 HAL headers.
  * 2. Call RL2812_STM32_AttachTimerDma() after creating the strip, or
  *    RL2812_STM32H7_AttachTimerDmaAuto() if you want ARR/duty auto-calculation.
  * 3. In HAL_TIM_PWM_PulseFinishedCallback() or your DMA completion callback,
@@ -39,11 +35,6 @@ extern "C" {
 
 #ifndef RL2812_STM32_BRIGHTNESS_MAX
 #define RL2812_STM32_BRIGHTNESS_MAX     100U
-#endif
-
-#if !defined(USE_HAL_DRIVER)
-typedef struct TIM_HandleTypeDef TIM_HandleTypeDef;
-typedef struct DMA_HandleTypeDef DMA_HandleTypeDef;
 #endif
 
 typedef struct _RL2812_STRIP
@@ -106,6 +97,65 @@ void RL2812_STM32H7_AttachTimerDmaAuto(RL2812_STRIP* strip,
  * To be called from HAL_TIM_PWM_PulseFinishedCallback / DMA complete callback.
  */
 void RL2812_STM32_TxCpltCallback(RL2812_STRIP* strip);
+
+/*==============================================================================
+ * LED Effect Enumeration
+ *============================================================================*/
+typedef enum {
+    RL_UI_LED_EFFECT_NONE = 0,
+    RL_UI_LED_EFFECT_BREATH,
+    RL_UI_LED_EFFECT_MARQUEE,
+    RL_UI_LED_EFFECT_I2S_FLASH,
+    RL_UI_LED_EFFECT_ALLON,
+    RL_UI_LED_EFFECT_RAINBOW,
+    RL_UI_LED_EFFECT_AUDIO,
+} RL_UI_LED_Effect_Mode;
+
+/*==============================================================================
+ * Effect State Structures
+ *============================================================================*/
+typedef struct {
+    uint16_t cycle_count;
+    uint8_t  brightness;
+    float    step;
+    uint8_t  r;
+    uint8_t  g;
+    uint8_t  b;
+    uint16_t speed_ms;
+    uint8_t  enable;
+    uint8_t  initenable;
+} RL_RGB_BreathInfo;
+
+typedef struct {
+    uint16_t cycle_count;
+    uint16_t position;
+} RL_RGB_MarqueInfo;
+
+typedef struct {
+    uint16_t state;
+    uint16_t basecnt;
+} RL_RGB_MoveInfo;
+
+typedef struct {
+    uint16_t hue;
+    uint16_t position;
+    uint16_t basecnt;
+} RL_RGB_FadeInfo;
+
+/*==============================================================================
+ * LED Effect Public API
+ *============================================================================*/
+#define MAX_BRIGHTNESS 100U
+#define RL2812_STM32_LED_NUM_MAX_AUDIO 64U
+
+extern RL_RGB_BreathInfo rl_rgb_breathinfo;
+extern RL_RGB_MarqueInfo rl_rgb_marqueinfo;
+extern RL_RGB_MoveInfo   rl_rgb_moveinfo;
+extern RL_RGB_FadeInfo   rl_rgb_fadeinfo;
+
+void RL2812_RGB_Init(void);
+void RL2812_RGB_TimerUpdate(RL2812_STRIP* strip, RL_UI_LED_Effect_Mode led_effect);
+void RL2812_HSVtoRGB(uint16_t h, uint8_t s, uint8_t v, uint8_t* r, uint8_t* g, uint8_t* b);
 
 #ifdef __cplusplus
 }

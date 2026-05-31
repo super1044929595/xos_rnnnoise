@@ -346,7 +346,9 @@ void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* htim_pwm)
 
     __HAL_LINKDMA(htim_pwm, hdma[TIM_DMA_ID_CC3], hdma_tim3_ch3);
 
-    HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 6, 0);
+    /* Priority must be above RTOS max syscall priority (5) to avoid deadlock
+       in RL2812_SendData busy-wait on tx_done (set by this DMA IRQ). */
+    HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 4, 0);
     HAL_NVIC_EnableIRQ(DMA1_Stream7_IRQn);
   }
 }

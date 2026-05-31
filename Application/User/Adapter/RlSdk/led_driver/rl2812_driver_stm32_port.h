@@ -21,6 +21,10 @@
  *    compiling this driver.
  */
 
+#if defined(USE_HAL_DRIVER)
+#include "stm32f4xx_hal.h"
+#endif
+
 #ifndef RL2812_STM32_HAL_OK
 #define RL2812_STM32_HAL_OK                      HAL_OK
 #endif

@@ -3,18 +3,21 @@
 #define MNV_LABELS_H
 #include <stdint.h>
 
-#define MNV_LABEL_COUNT 3U
+#define MNV_LABEL_COUNT 4U
 
-#define MNV_LABEL_0_NAME "start"
-#define MNV_LABEL_START_INDEX 0U
-#define MNV_LABEL_1_NAME "stop"
-#define MNV_LABEL_STOP_INDEX 1U
-#define MNV_LABEL_2_NAME "unknown"
-#define MNV_LABEL_UNKNOWN_INDEX 2U
+#define MNV_LABEL_0_NAME "close"
+#define MNV_LABEL_CLOSE_INDEX 0U
+#define MNV_LABEL_1_NAME "open"
+#define MNV_LABEL_OPEN_INDEX 1U
+#define MNV_LABEL_2_NAME "start"
+#define MNV_LABEL_START_INDEX 2U
+#define MNV_LABEL_3_NAME "unknown"
+#define MNV_LABEL_UNKNOWN_INDEX 3U
 
 static const char *const g_rl_minerva_labels[MNV_LABEL_COUNT] = {
+    "close",
+    "open",
     "start",
-    "stop",
     "unknown",
 };
 
