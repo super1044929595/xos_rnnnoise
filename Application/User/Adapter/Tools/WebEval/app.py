@@ -65,7 +65,26 @@ def prepare_frame(pcm: np.ndarray) -> np.ndarray:
     if len(pcm) < FRAME_SAMPLES:
         pcm = np.concatenate([pcm, np.zeros(FRAME_SAMPLES - len(pcm), dtype=np.float32)])
     elif len(pcm) > FRAME_SAMPLES:
-        start = max(0, (len(pcm) - FRAME_SAMPLES) // 2)
+        # Find the frame with maximum peak energy instead of always taking the middle.
+        n_frames = len(pcm) - FRAME_SAMPLES + 1
+        if n_frames <= 0:
+            start = 0
+        else:
+            stride = max(1, n_frames // 200)
+            best_start = 0
+            best_peak = 0
+            for s in range(0, n_frames, stride):
+                seg_peak = int(np.max(np.abs(pcm[s:s + FRAME_SAMPLES])))
+                if seg_peak > best_peak:
+                    best_peak = seg_peak
+                    best_start = s
+            fine_range = min(stride * 2, n_frames - best_start)
+            for s in range(best_start, best_start + fine_range):
+                seg_peak = int(np.max(np.abs(pcm[s:s + FRAME_SAMPLES])))
+                if seg_peak > best_peak:
+                    best_peak = seg_peak
+                    best_start = s
+            start = best_start
         pcm = pcm[start:start + FRAME_SAMPLES]
     return pcm.astype(np.int16)
 

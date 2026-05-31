@@ -484,7 +484,9 @@ def trigger_train():
                  "--out-model", str(MODEL_PATH),
                  "--out-calib", str(CALIB_PATH),
                  "--epochs", "800",
-                 "--lr", "0.003"],
+                 "--lr", "0.001",
+                 "--hidden1", "48",
+                 "--hidden2", "24"],
                 capture_output=True, text=True, timeout=600,
             )
             print("[WebEval] train stdout:", result.stdout)
