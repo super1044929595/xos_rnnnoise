@@ -55,7 +55,7 @@ void Error_Handler(void);
 void MX_I2C1_Init(void);
 void MX_TIM3_Init(void);
 void MX_I2S3_Init(void);
-void MX_USART1_UART_Init(void);
+void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN EFP */
 
@@ -90,9 +90,9 @@ void MX_USART1_UART_Init(void);
 #define MIC_CK_GPIO_Port GPIOC
 #define MIC_SD_Pin GPIO_PIN_12
 #define MIC_SD_GPIO_Port GPIOC
-#define LOG_TX_Pin GPIO_PIN_9
+#define LOG_TX_Pin GPIO_PIN_2
 #define LOG_TX_GPIO_Port GPIOA
-#define LOG_RX_Pin GPIO_PIN_10
+#define LOG_RX_Pin GPIO_PIN_3
 #define LOG_RX_GPIO_Port GPIOA
 
 /* USER CODE END Private defines */

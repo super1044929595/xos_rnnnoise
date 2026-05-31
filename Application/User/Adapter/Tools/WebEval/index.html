@@ -2937,13 +2937,18 @@
       }
       var html = '';
       labels.forEach(function(l) {
-        var savedCmd = serialCommands[l] || '';
+        // Default: send keyword name as command (MCU side maps name -> LED color)
+        var savedCmd = serialCommands[l];
+        if (savedCmd === undefined) {
+          savedCmd = l + '\r\n';
+          serialCommands[l] = savedCmd;
+        }
         var escaped = savedCmd.replace(/\r/g, '\\r').replace(/\n/g, '\\n');
         html += '<div class="serial-cmd-row">' +
           '<span class="kw-label">' + l + '</span>' +
           '<input type="text" class="serial-cmd-input" data-kw="' + l + '" value="' + 
           escaped.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + 
-          '" placeholder="指令,如 AT+LED=1\\r\\n">' +
+          '" placeholder="' + l + '\\r\\n">' +
         '</div>';
       });
       serialCmdListEl.innerHTML = html;
@@ -3053,9 +3058,12 @@
     async function notifySerialKeyword(keyword, confidence) {
       if (!serialConnected) return;
       var threshold = parseFloat(serialThresholdEl.value) / 100;
-      if (confidence < threshold) return;
+      if (confidence < threshold) {
+        console.log('[Serial] Skipped: ' + keyword + ' conf=' + confidence.toFixed(2) + ' < threshold=' + threshold.toFixed(2));
+        return;
+      }
       try {
-        await apiFetch('/api/serial/notify_keyword', {
+        var resp = await apiFetch('/api/serial/notify_keyword', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -3063,8 +3071,9 @@
             confidence: confidence,
           }),
         });
+        console.log('[Serial] Notify result:', resp);
       } catch(e) {
-        // silent
+        console.error('[Serial] Notify error:', e.message);
       }
     }
 

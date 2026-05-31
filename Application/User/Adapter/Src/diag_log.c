@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 
 static uint8_t s_diag_log_busy;
 static uint8_t s_diag_log_buf[256];
@@ -34,7 +34,7 @@ void DiagLog_Write(const uint8_t *data, uint16_t len)
 
     memcpy(s_diag_log_buf, data, len);
     s_diag_log_busy = 1U;
-    if (HAL_UART_Transmit_DMA(&huart1, s_diag_log_buf, len) != HAL_OK)
+    if (HAL_UART_Transmit_DMA(&huart2, s_diag_log_buf, len) != HAL_OK)
     {
         s_diag_log_busy = 0U;
     }
@@ -42,7 +42,7 @@ void DiagLog_Write(const uint8_t *data, uint16_t len)
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-    if (huart->Instance == USART1)
+    if (huart->Instance == USART2)
     {
         s_diag_log_busy = 0U;
     }

@@ -482,7 +482,7 @@ void RL2812_RGB_TimerUpdate(RL2812_STRIP* strip, RL_UI_LED_Effect_Mode led_effec
             for(uint16_t i = 0; i < strip->led_num; i++){
                 uint16_t led_hue = (uint16_t)((rl_rgb_marqueinfo.position * 18U + i * 360U / strip->led_num) % 360U);
                 uint8_t r, g, b;
-                RL2812_HSVtoRGB(led_hue, 100, 65, &r, &g, &b);
+                RL2812_HSVtoRGB(led_hue, 100, 25, &r, &g, &b);
                 RL2812_SetPixel(strip, i, g, r, b);
             }
             RL2812_SendData(strip);

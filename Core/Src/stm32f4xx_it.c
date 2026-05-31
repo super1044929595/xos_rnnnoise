@@ -59,10 +59,10 @@
 extern I2C_HandleTypeDef hi2c1;
 extern DMA_HandleTypeDef hdma_tim3_ch3;
 extern DMA_HandleTypeDef hdma_spi3_rx;
-extern DMA_HandleTypeDef hdma_usart1_tx;
+extern DMA_HandleTypeDef hdma_usart2_tx;
 extern I2S_HandleTypeDef hi2s3;
 extern TIM_HandleTypeDef htim6;
-extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN EV */
 
@@ -238,14 +238,14 @@ void SPI3_IRQHandler(void)
   HAL_I2S_IRQHandler(&hi2s3);
 }
 
-void DMA2_Stream7_IRQHandler(void)
+void DMA1_Stream6_IRQHandler(void)
 {
-  HAL_DMA_IRQHandler(&hdma_usart1_tx);
+  HAL_DMA_IRQHandler(&hdma_usart2_tx);
 }
 
-void USART1_IRQHandler(void)
+void USART2_IRQHandler(void)
 {
-  HAL_UART_IRQHandler(&huart1);
+  HAL_UART_IRQHandler(&huart2);
 }
 
 /* USER CODE BEGIN 1 */

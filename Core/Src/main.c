@@ -28,6 +28,7 @@
 #include "rl_minerva_kws.h"
 #include "diag_log.h"
 #include <stdio.h>
+#include <string.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -67,7 +68,7 @@ CRC_HandleTypeDef hcrc;
 I2C_HandleTypeDef hi2c1;
 I2S_HandleTypeDef hi2s3;
 TIM_HandleTypeDef htim3;
-UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
 
 QSPI_HandleTypeDef hqspi;
 
@@ -96,6 +97,16 @@ static volatile uint32_t mic_diag_last_peak = 0U;
 static volatile uint32_t mic_diag_last_samples = 0U;
 static volatile uint32_t mic_diag_last_tick = 0U;
 
+/* UART command reception */
+static volatile uint8_t  uart_rx_byte = 0U;
+static volatile uint8_t  uart_cmd_received = 0U;
+
+/* UART keyword line buffer */
+#define UART_CMD_BUF_SIZE 64U
+static uint8_t  uart_cmd_buf[UART_CMD_BUF_SIZE];
+static uint8_t  uart_cmd_idx = 0U;
+static volatile uint8_t uart_cmd_line_ready = 0U;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,7 +117,7 @@ static void MX_FSMC_Init(void);
 static void MX_QUADSPI_Init(void);
 void MX_TIM3_Init(void);
 void MX_I2S3_Init(void);
-void MX_USART1_UART_Init(void);
+void MX_USART2_UART_Init(void);
 void StartDefaultTask(void *argument);
 #ifdef ENABLE_TOUCHGFX
 extern void TouchGFX_Task(void *argument);
@@ -179,7 +190,7 @@ int main(void)
   MX_I2C1_Init();
   MX_I2S3_Init();
   MX_TIM3_Init();
-  MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
   MX_QUADSPI_Init();
 #ifdef ENABLE_TOUCHGFX
   MX_TouchGFX_Init();
@@ -189,6 +200,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   RL_SDK_Bridge_Init();
   DiagLog_Init();
+
+  /* Start UART2 interrupt receive for keyword-command from PC (ST-LINK VCP) */
+  HAL_UART_Receive_IT(&huart2, (uint8_t *)&uart_rx_byte, 1U);
 
   /* USER CODE END 2 */
 
@@ -361,17 +375,17 @@ void MX_I2S3_Init(void)
   }
 }
 
-void MX_USART1_UART_Init(void)
+void MX_USART2_UART_Init(void)
 {
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -641,8 +655,8 @@ void StartDefaultTask(void *argument)
     Error_Handler();
   }
 
-  /* Run MARQUEE effect via unified timer API */
-  RL_SDK_Bridge_SetLedEffect(RL_UI_LED_EFFECT_MARQUEE);
+  /* LEDs off by default — only flash on keyword command from PC */
+  RL_SDK_Bridge_Clear();
 
   /* Chasing flow on KWS trigger state */
   uint32_t chase_tick      = 0U;
@@ -654,10 +668,140 @@ void StartDefaultTask(void *argument)
   uint8_t chase_rounds_left = 0U;  /* Forward + backward = 1 round */
   #define LED_TIMER_MS     20U     /* LED effect update period */
 
+  /* UART keyword-command soft-breath flash state */
+  uint32_t kw_flash_tick    = 0U;
+  uint8_t  kw_flash_active  = 0U;
+  uint16_t kw_breath_step   = 0U;   /* 0..(STEPS*4-1) over full cycle */
+  uint8_t  kw_flash_count   = 0U;
+  uint8_t  kw_flash_r       = 0U;
+  uint8_t  kw_flash_g       = 0U;
+  uint8_t  kw_flash_b       = 0U;
+  #define KW_BREATH_STEP_MS  12U    /* breath update interval */
+  #define KW_BREATH_STEPS    32U    /* steps per half-cycle (fade-in or fade-out) */
+  #define KW_BREATH_PEAK     0x0CU  /* max brightness, very soft & translucent */
+  #define KW_BREATH_CYCLES   2U     /* full breath cycles per trigger */
+
   for(;;)
   {
-    RL_MinervaKwsResult kws = RL_MinervaKws_GetResult();
     uint32_t now = HAL_GetTick();
+
+    /* ----- UART keyword command: parse line, assign color, trigger flash ----- */
+    if (uart_cmd_line_ready != 0U)
+    {
+      uart_cmd_line_ready = 0U;
+      const char *cmd = (const char *)uart_cmd_buf;
+
+      /* Map keyword name to LED color (G,R,B order per RL_SDK_Bridge API) */
+      uint8_t r = 0x00U, g = 0x30U, b = 0x00U;  /* default: green */
+
+      /* Simple color table — extend with your own keywords */
+      if (strstr(cmd, "red") != NULL || strstr(cmd, "RED") != NULL
+          || strstr(cmd, "Red") != NULL)
+      {
+        r = 0x30U; g = 0x00U; b = 0x00U;  /* red */
+      }
+      else if (strstr(cmd, "blue") != NULL || strstr(cmd, "BLUE") != NULL
+               || strstr(cmd, "Blue") != NULL)
+      {
+        r = 0x00U; g = 0x00U; b = 0x30U;  /* blue */
+      }
+      else if (strstr(cmd, "yellow") != NULL || strstr(cmd, "YELLOW") != NULL
+               || strstr(cmd, "Yellow") != NULL)
+      {
+        r = 0x30U; g = 0x30U; b = 0x00U;  /* yellow */
+      }
+      else if (strstr(cmd, "purple") != NULL || strstr(cmd, "PURPLE") != NULL
+               || strstr(cmd, "Purple") != NULL)
+      {
+        r = 0x20U; g = 0x00U; b = 0x20U;  /* purple */
+      }
+      else if (strstr(cmd, "white") != NULL || strstr(cmd, "WHITE") != NULL
+               || strstr(cmd, "White") != NULL)
+      {
+        r = 0x30U; g = 0x30U; b = 0x30U;  /* white */
+      }
+      else if (strstr(cmd, "cyan") != NULL || strstr(cmd, "CYAN") != NULL
+               || strstr(cmd, "Cyan") != NULL)
+      {
+        r = 0x00U; g = 0x30U; b = 0x30U;  /* cyan */
+      }
+      else if (strstr(cmd, "orange") != NULL || strstr(cmd, "ORANGE") != NULL
+               || strstr(cmd, "Orange") != NULL)
+      {
+        r = 0x30U; g = 0x10U; b = 0x00U;  /* orange */
+      }
+      /* else: stay green (default) */
+
+      /* Start soft-breath if not already active */
+      if (chase_active == 0U && kw_flash_active == 0U)
+      {
+        RL_SDK_Bridge_Clear();
+        kw_flash_r      = r;
+        kw_flash_g      = g;
+        kw_flash_b      = b;
+        kw_flash_active = 1U;
+        kw_breath_step  = 0U;
+        kw_flash_count  = 0U;
+        kw_flash_tick   = now;
+      }
+    }
+
+    /* ----- Keyword soft-breath animation (smooth fade-in/fade-out) ----- */
+    if (kw_flash_active != 0U)
+    {
+      uint32_t elapsed = now - kw_flash_tick;
+
+      if (elapsed >= KW_BREATH_STEP_MS)
+      {
+        kw_flash_tick = now;
+
+        /* Compute brightness: triangle wave over STEPS*2 */
+        uint16_t pos  = kw_breath_step % (KW_BREATH_STEPS * 2U);
+        uint8_t  bright;
+
+        if (pos < KW_BREATH_STEPS)
+        {
+          /* Fade-in: 0 -> PEAK */
+          bright = (uint8_t)(((uint32_t)KW_BREATH_PEAK * pos) / (KW_BREATH_STEPS - 1U));
+        }
+        else
+        {
+          /* Fade-out: PEAK -> 0 */
+          uint16_t d = (KW_BREATH_STEPS * 2U - 1U) - pos;
+          bright = (uint8_t)(((uint32_t)KW_BREATH_PEAK * d) / (KW_BREATH_STEPS - 1U));
+        }
+
+        /* Scale RGB channels by brightness ratio */
+        uint8_t rr = (uint8_t)(((uint32_t)kw_flash_r * bright) / KW_BREATH_PEAK);
+        uint8_t gg = (uint8_t)(((uint32_t)kw_flash_g * bright) / KW_BREATH_PEAK);
+        uint8_t bb = (uint8_t)(((uint32_t)kw_flash_b * bright) / KW_BREATH_PEAK);
+
+        uint8_t i;
+        RL_SDK_Bridge_Clear();
+        for (i = 0U; i < 8U; i++)
+        {
+          RL_SDK_Bridge_SetPixel(i, gg, rr, bb);
+        }
+
+        kw_breath_step++;
+
+        /* Count completed full cycles (pos wraps back to 0) */
+        if (kw_breath_step >= KW_BREATH_STEPS * 2U)
+        {
+          kw_breath_step = 0U;
+          kw_flash_count++;
+
+          if (kw_flash_count >= KW_BREATH_CYCLES)
+          {
+            RL_SDK_Bridge_Clear();
+            kw_flash_active = 0U;
+            /* LEDs off after breath — wait for next keyword command */
+          }
+        }
+      }
+    }
+
+    RL_MinervaKwsResult kws = RL_MinervaKws_GetResult();
 
     /* Keyword trigger: start chasing flow, override I2S_FLASH */
     if (kws.state == RL_MINERVA_KWS_STATE_TRIGGERED)
@@ -707,8 +851,7 @@ void StartDefaultTask(void *argument)
             {
               RL_SDK_Bridge_Clear();
               chase_active = 0U;
-              /* Resume MARQUEE */
-              RL_SDK_Bridge_SetLedEffect(RL_UI_LED_EFFECT_MARQUEE);
+              /* LEDs off after chase — wait for next trigger */
             }
             else
             {
@@ -750,6 +893,41 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
 
   /* USER CODE END Callback 1 */
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART2)
+  {
+    uint8_t byte = uart_rx_byte;
+
+    /* Re-arm receive for next byte immediately */
+    HAL_UART_Receive_IT(&huart2, (uint8_t *)&uart_rx_byte, 1U);
+
+    /* Skip CR, terminate on LF */
+    if (byte == '\r')
+    {
+      return;
+    }
+
+    if (byte == '\n')
+    {
+      /* Line complete */
+      if (uart_cmd_idx > 0U)
+      {
+        uart_cmd_buf[uart_cmd_idx] = 0U;  /* null-terminate */
+        uart_cmd_idx = 0U;
+        uart_cmd_line_ready = 1U;
+      }
+      return;
+    }
+
+    /* Append to buffer if space remains */
+    if (uart_cmd_idx < (UART_CMD_BUF_SIZE - 1U))
+    {
+      uart_cmd_buf[uart_cmd_idx++] = byte;
+    }
+  }
 }
 
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)

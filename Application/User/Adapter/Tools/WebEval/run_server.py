@@ -573,6 +573,7 @@ def serial_get_config():
 @app.post("/api/serial/connect")
 def serial_connect():
     """Connect to a serial port."""
+    global _serial_port, _serial_config
     from flask import jsonify, request
     if not HAS_SERIAL:
         return jsonify({"error": "pyserial not installed"}), 500
@@ -614,6 +615,7 @@ def serial_connect():
 @app.post("/api/serial/disconnect")
 def serial_disconnect():
     """Disconnect from serial port."""
+    global _serial_port, _serial_config
     from flask import jsonify
     with _serial_lock:
         if _serial_port is not None and _serial_port.is_open:
@@ -631,6 +633,7 @@ def serial_disconnect():
 @app.post("/api/serial/send")
 def serial_send():
     """Send a command via serial port."""
+    global _serial_port
     from flask import jsonify, request
     if not HAS_SERIAL:
         return jsonify({"error": "pyserial not installed"}), 500
@@ -658,6 +661,7 @@ def serial_send():
 @app.post("/api/serial/update_config")
 def serial_update_config():
     """Update threshold and commands without reconnecting."""
+    global _serial_config
     from flask import jsonify, request
     data = request.get_json(silent=True) or {}
     if "threshold" in data:
@@ -674,6 +678,7 @@ def serial_notify_keyword():
     Called by the frontend when a keyword is recognized with sufficient confidence.
     If confidence >= threshold and serial is connected, sends the configured command.
     """
+    global _serial_port, _serial_config
     from flask import jsonify, request
     data = request.get_json(silent=True) or {}
     keyword = data.get("keyword", "").strip()
