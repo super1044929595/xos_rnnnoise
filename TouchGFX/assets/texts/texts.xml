@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextDatabase xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="texts.xsd" Version="4.26.0">
+  <Languages>
+    <Language Id="GB" />
+  </Languages>
+  <Texts>
+    <TextGroup Id="Group1">
+      <Text Id="TemperatureIndicator" Alignment="Center" TypographyId="Temperature_degree">
+        <Translation Language="GB">&lt;temperature&gt;°</Translation>
+      </Text>
+      <Text Id="TemperatureIndicatorChars" Alignment="Center" TypographyId="Temperature_degree">
+        <Translation Language="GB">0123456789-</Translation>
+      </Text>
+      <Text Id="Temperature_menu_headline" Alignment="Center" TypographyId="Temperature_menu">
+        <Translation Language="GB">TEMPERATURE LIVE</Translation>
+      </Text>
+      <Text Id="Temperature_monday" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">Monday</Translation>
+      </Text>
+      <Text Id="Temperature_tuesday" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">Tuesday</Translation>
+      </Text>
+      <Text Id="Temperature_wednesday" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">Wednesday</Translation>
+      </Text>
+      <Text Id="Temperature_thursday" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">Thursday</Translation>
+      </Text>
+      <Text Id="Temperature_friday" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">Friday</Translation>
+      </Text>
+      <Text Id="Temperature_saturday" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">Saturday</Translation>
+      </Text>
+      <Text Id="Temperature_sunday" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">Sunday</Translation>
+      </Text>
+      <Text Id="Temperature_Room0" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">LIVING ROOM</Translation>
+      </Text>
+      <Text Id="Temperature_Room1" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">BEDROOM</Translation>
+      </Text>
+      <Text Id="Temperature_Room2" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">KITCHEN</Translation>
+      </Text>
+      <Text Id="Temperature_Room3" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">HALL</Translation>
+      </Text>
+      <Text Id="Temperature_Room4" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">HOME OFFICE</Translation>
+      </Text>
+      <Text Id="Temperature_Room5" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">BATHROOM</Translation>
+      </Text>
+      <Text Id="Temperature_Room6" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">BASEMENT</Translation>
+      </Text>
+      <Text Id="Temperature_Room7" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">DINING ROOM</Translation>
+      </Text>
+      <Text Id="Temperature_menu" Alignment="Right" TypographyId="Temperature_menu_degrees">
+        <Translation Language="GB">&lt;temperature&gt;°</Translation>
+      </Text>
+      <Text Id="Temperature_menu_chars" Alignment="Right" TypographyId="Temperature_menu_degrees">
+        <Translation Language="GB">0123456789-</Translation>
+      </Text>
+      <Text Id="Temperature_Room0_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">LIVING ROOM</Translation>
+      </Text>
+      <Text Id="Temperature_Room1_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">BEDROOM</Translation>
+      </Text>
+      <Text Id="Temperature_Room2_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">KITCHEN</Translation>
+      </Text>
+      <Text Id="Temperature_Room3_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">HALL</Translation>
+      </Text>
+      <Text Id="Temperature_Room4_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">HOME OFFICE</Translation>
+      </Text>
+      <Text Id="Temperature_Room5_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">BATHROOM</Translation>
+      </Text>
+      <Text Id="Temperature_Room6_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">BASEMENT</Translation>
+      </Text>
+      <Text Id="Temperature_Room7_headline" Alignment="Center" TypographyId="Temperature_headline">
+        <Translation Language="GB">DINING ROOM</Translation>
+      </Text>
+      <Text Id="Temperature_Room0_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">LIVING ROOM SCHEDULE</Translation>
+      </Text>
+      <Text Id="Temperature_Room1_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">BEDROOM SCHEDULE</Translation>
+      </Text>
+      <Text Id="Temperature_Room2_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">KITCHEN SCHEDULE</Translation>
+      </Text>
+      <Text Id="Temperature_Room3_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">HALL SCHEDULE</Translation>
+      </Text>
+      <Text Id="Temperature_Room4_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">HOME OFFICE SCHEDULE</Translation>
+      </Text>
+      <Text Id="Temperature_Room5_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">BATHROOM SCHEDULE</Translation>
+      </Text>
+      <Text Id="Temperature_Room6_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">BASEMENT SCHEDULE</Translation>
+      </Text>
+      <Text Id="Temperature_Room7_schedule" Alignment="Left" TypographyId="Temperature_menu">
+        <Translation Language="GB">DINING ROOM SCHEDULE</Translation>
+      </Text>
+      <Text Id="TemperatureIndicatorTile" Alignment="Right" TypographyId="Temperature_degree">
+        <Translation Language="GB">&lt;temperature&gt;°</Translation>
+      </Text>
+      <Text Id="TemperatureIndicatorTileChars" Alignment="Right" TypographyId="Temperature_degree">
+        <Translation Language="GB">0123456789-</Translation>
+      </Text>
+      <Text Id="weather_large_temperature" Alignment="Left" TypographyId="Weather_large_text">
+        <Translation Language="GB">&lt;temperature&gt;°</Translation>
+      </Text>
+      <Text Id="weather_large_temperature_chars" Alignment="Left" TypographyId="Weather_large_text">
+        <Translation Language="GB">0123456789-</Translation>
+      </Text>
+      <Text Id="weather_city_0" Alignment="Left" TypographyId="Weather_normal_text">
+        <Translation Language="GB">COPENHAGEN</Translation>
+      </Text>
+      <Text Id="weather_city_1" Alignment="Left" TypographyId="Weather_normal_text">
+        <Translation Language="GB">MUMBAI</Translation>
+      </Text>
+      <Text Id="weather_city_2" Alignment="Left" TypographyId="Weather_normal_text">
+        <Translation Language="GB">HONG KONG</Translation>
+      </Text>
+      <Text Id="weather_city_3" Alignment="Left" TypographyId="Weather_normal_text">
+        <Translation Language="GB">NEW YORK</Translation>
+      </Text>
+      <Text Id="weather_time_info_0" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">07:18 SUNDAY 24 NOV</Translation>
+      </Text>
+      <Text Id="weather_time_info_1" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">14:18 SUNDAY 24 NOV</Translation>
+      </Text>
+      <Text Id="weather_time_info_2" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">12:18 SUNDAY 24 NOV</Translation>
+      </Text>
+      <Text Id="Chrom_art_tile_no_Chrom_art" Alignment="Left" TypographyId="Tile_id">
+        <Translation Language="GB" Alignment="Center">Blend effect</Translation>
+      </Text>
+      <Text Id="weather_time_info_3" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">01:18 SUNDAY 24 NOV</Translation>
+      </Text>
+      <Text Id="weather_day_0" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">MON</Translation>
+      </Text>
+      <Text Id="weather_day_1" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">TUE</Translation>
+      </Text>
+      <Text Id="weather_day_2" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">WED</Translation>
+      </Text>
+      <Text Id="weather_day_3" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">THU</Translation>
+      </Text>
+      <Text Id="weather_day_4" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">FRI</Translation>
+      </Text>
+      <Text Id="weather_day_5" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">SAT</Translation>
+      </Text>
+      <Text Id="weather_day_6" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">SUN</Translation>
+      </Text>
+      <Text Id="weather_small_temperature" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">&lt;temperature&gt;°</Translation>
+      </Text>
+      <Text Id="weather_small_temperature_chars" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">0123456789-</Translation>
+      </Text>
+      <Text Id="weather_tile_temperature" Alignment="Left" TypographyId="Weather_tile_text">
+        <Translation Language="GB">&lt;temperature&gt;°</Translation>
+      </Text>
+      <Text Id="weather_tile_temperature_chars" Alignment="Left" TypographyId="Weather_tile_text">
+        <Translation Language="GB">0123456789-</Translation>
+      </Text>
+      <Text Id="Home_automation_tile" Alignment="Left" TypographyId="Tile_id">
+        <Translation Language="GB">Home Control</Translation>
+      </Text>
+      <Text Id="Live_data_display_tile" Alignment="Left" TypographyId="Tile_id">
+        <Translation Language="GB">Weather</Translation>
+      </Text>
+      <Text Id="Animated_graphics_tile" Alignment="Center" TypographyId="Tile_id">
+        <Translation Language="GB">Light effect</Translation>
+      </Text>
+      <Text Id="Chrom_art_tile" Alignment="Center" TypographyId="Tile_id">
+        <Translation Language="GB" Alignment="Center">Chrom-art</Translation>
+      </Text>
+      <Text Id="Chrom_art_not_supported" Alignment="Center" TypographyId="Weather_tile_text">
+        <Translation Language="GB">No Chrom-art</Translation>
+      </Text>
+      <Text Id="Mcu_Load_Value" Alignment="Center" TypographyId="McuLoad_Text">
+        <Translation Language="GB">&lt;value&gt; %</Translation>
+      </Text>
+      <Text Id="Mcu_Load_Value_Numbers" Alignment="Center" TypographyId="McuLoad_Text">
+        <Translation Language="GB">0123456789-</Translation>
+      </Text>
+      <Text Id="Mcu_Load_text" Alignment="Center" TypographyId="McuLoad_Text">
+        <Translation Language="GB">MCU load</Translation>
+      </Text>
+      <Text Id="__SingleUse_BX4H" Alignment="Left" TypographyId="McuLoad_Text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_9993" Alignment="Left" TypographyId="Weather_large_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_Y8JC" Alignment="Left" TypographyId="Weather_large_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_VCM4" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_I8DJ" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_TXES" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_7AOQ" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_ELLK" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_GGH5" Alignment="Left" TypographyId="Weather_small_text">
+        <Translation Language="GB">0</Translation>
+      </Text>
+      <Text Id="__SingleUse_XYFP" Alignment="Left" TypographyId="Temperature_menu_degrees">
+        <Translation Language="GB">0</Translation>
+      </Text>
+    </TextGroup>
+  </Texts>
+  <Typographies>
+    <Typography Id="Temperature_degree" Font="Asap-Regular.ttf" Size="32" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Temperature_menu" Font="Asap-Regular.ttf" Size="17" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Temperature_menu_degrees" Font="Asap-Regular.ttf" Size="16" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Temperature_headline" Font="Asap-Regular.ttf" Size="16" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Weather_large_text" Font="SourceSansPro-Regular.ttf" Size="78" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Weather_normal_text" Font="SourceSansPro-Regular.ttf" Size="14" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Weather_small_text" Font="SourceSansPro-Regular.ttf" Size="12" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Weather_tile_text" Font="SourceSansPro-Regular.ttf" Size="54" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="Tile_id" Font="Asap-Regular.ttf" Size="12" Bpp="4" IsVector="no" Direction="LTR" />
+    <Typography Id="McuLoad_Text" Font="RobotoCondensed-Regular.ttf" Size="12" Bpp="4" IsVector="no" Direction="LTR" />
+  </Typographies>
+</TextDatabase>

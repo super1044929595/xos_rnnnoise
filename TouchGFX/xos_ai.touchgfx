@@ -1,0 +1,912 @@
+{
+  "Application": {
+    "Screens": [
+      {
+        "Name": "Menu",
+        "Components": [
+          {
+            "Type": "Image",
+            "Name": "backgroundTop",
+            "Width": 240,
+            "Height": 140,
+            "RelativeFilename": "menu\\background_top.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "backgroundBottom",
+            "Y": 140,
+            "Width": 240,
+            "Height": 100,
+            "RelativeFilename": "menu\\background_bottom.png"
+          }
+        ],
+        "Interactions": []
+      },
+      {
+        "Name": "ChromArt",
+        "Components": [
+          {
+            "Type": "Container",
+            "Name": "viewPort",
+            "Width": 240,
+            "Height": 240,
+            "Components": [
+              {
+                "Type": "Image",
+                "Name": "background",
+                "Width": 240,
+                "Height": 200,
+                "RelativeFilename": "chromart\\chrom_art_sun.png"
+              },
+              {
+                "Type": "Image",
+                "Name": "clouds0",
+                "Y": 10,
+                "Width": 210,
+                "Height": 156,
+                "RelativeFilename": "chromart\\chrom_art_clouds.png"
+              },
+              {
+                "Type": "Image",
+                "Name": "clouds1",
+                "X": 310,
+                "Y": 10,
+                "Width": 210,
+                "Height": 156,
+                "RelativeFilename": "chromart\\chrom_art_clouds.png"
+              },
+              {
+                "Type": "Image",
+                "Name": "stLogo",
+                "X": 120,
+                "Y": 63,
+                "Width": 100,
+                "Height": 52,
+                "RelativeFilename": "chromart\\st_logo.png",
+                "Draggable": true
+              },
+              {
+                "Type": "Image",
+                "Name": "touchGFXLogo",
+                "X": 20,
+                "Y": 63,
+                "Width": 80,
+                "Height": 76,
+                "RelativeFilename": "chromart\\touchgfx_logo.png",
+                "Draggable": true
+              },
+              {
+                "Type": "Image",
+                "Name": "tree",
+                "Y": 61,
+                "Width": 240,
+                "Height": 139,
+                "RelativeFilename": "chromart\\chrom_art_background.png"
+              },
+              {
+                "Type": "ToggleButton",
+                "Name": "chromArtOnOffButton",
+                "Y": 160,
+                "Width": 132,
+                "Height": 40,
+                "Pressed": "chromart\\chrom_art_on_button.png",
+                "Released": "chromart\\chrom_art_off_button.png"
+              },
+              {
+                "Type": "Button",
+                "Name": "nextButton",
+                "X": 200,
+                "Y": 160,
+                "Width": 40,
+                "Height": 40,
+                "Pressed": "chromart\\layer_button_pressed.png",
+                "Released": "chromart\\layer_button.png"
+              }
+            ]
+          },
+          {
+            "Type": "Button",
+            "Name": "exitButton",
+            "Y": 200,
+            "Width": 240,
+            "Height": 40,
+            "Pressed": "animatedgraphics\\animated_graphics_back_button_pressed.png",
+            "Released": "animatedgraphics\\animated_graphics_back_button.png"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "mcuLoadTxt",
+            "X": 184,
+            "Y": 220,
+            "Width": 50,
+            "Height": 15,
+            "TextId": "Mcu_Load_Value",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "Wildcard1": {
+              "TextId": "__SingleUse_BX4H",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "mcuLoadHeadline",
+            "X": 184,
+            "Y": 204,
+            "Width": 50,
+            "Height": 16,
+            "TextId": "Mcu_Load_text",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            }
+          }
+        ],
+        "Interactions": []
+      },
+      {
+        "Name": "LiveDataDisplay",
+        "Components": [
+          {
+            "Type": "Image",
+            "Name": "backgroundSwipeAreaLeft",
+            "Width": 30,
+            "Height": 202,
+            "RelativeFilename": "livedatadisplay\\weather_background_ending_1.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "backgroundSwipeAreaRight",
+            "X": 210,
+            "Width": 30,
+            "Height": 202,
+            "RelativeFilename": "livedatadisplay\\weather_background_ending_1.png"
+          },
+          {
+            "Type": "Container",
+            "Name": "infoScreensViewPort",
+            "Width": 240,
+            "Height": 202,
+            "Components": [
+              {
+                "Type": "ListLayout",
+                "Name": "infoScreens",
+                "Width": 960,
+                "Height": 202,
+                "Direction": "East",
+                "Components": [
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "infoScreen0",
+                    "Width": 240,
+                    "Height": 202,
+                    "CustomContainerDefinitionName": "CityInfo"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "infoScreen1",
+                    "X": 240,
+                    "Width": 240,
+                    "Height": 202,
+                    "CustomContainerDefinitionName": "CityInfo"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "infoScreen2",
+                    "X": 480,
+                    "Width": 240,
+                    "Height": 202,
+                    "CustomContainerDefinitionName": "CityInfo"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "infoScreen3",
+                    "X": 720,
+                    "Width": 240,
+                    "Height": 202,
+                    "CustomContainerDefinitionName": "CityInfo"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Type": "Button",
+            "Name": "exitButton",
+            "Y": 202,
+            "Width": 240,
+            "Height": 40,
+            "Pressed": "animatedgraphics\\animated_graphics_back_button_pressed.png",
+            "Released": "animatedgraphics\\animated_graphics_back_button.png"
+          },
+          {
+            "Type": "CustomContainerInstance",
+            "Name": "weekInfoBar",
+            "Y": 130,
+            "Width": 240,
+            "Height": 50,
+            "CustomContainerDefinitionName": "WeekInfo"
+          }
+        ],
+        "Interactions": [
+          {
+            "InteractionName": "onButtonPressed",
+            "Trigger": {
+              "Type": "TriggerClicked",
+              "TriggerComponent": "exitButton"
+            },
+            "Action": {
+              "Type": "ActionGotoScreen",
+              "ScreenTransitionType": "ScreenTransitionSlide",
+              "ScreenTransitionDirection": "West",
+              "ActionComponent": "Menu"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "AnimatedGraphics",
+        "Components": [
+          {
+            "Type": "Box",
+            "Name": "shade",
+            "X": 240,
+            "Y": 152,
+            "Width": 50,
+            "Height": 50
+          },
+          {
+            "Type": "Button",
+            "Name": "exitButton",
+            "Y": 200,
+            "Width": 240,
+            "Height": 40,
+            "Pressed": "animatedgraphics\\animated_graphics_back_button_pressed.png",
+            "Released": "animatedgraphics\\animated_graphics_back_button.png"
+          }
+        ],
+        "Interactions": []
+      },
+      {
+        "Name": "HomeAutomation",
+        "Components": [
+          {
+            "Type": "Box",
+            "Name": "background",
+            "Width": 240,
+            "Height": 240
+          },
+          {
+            "Type": "ScrollableContainer",
+            "Name": "scrollableMenu",
+            "Y": 26,
+            "Width": 240,
+            "Height": 174,
+            "VerticalScrollEnabled": true,
+            "ScrollbarsAlpha": 255,
+            "Components": [
+              {
+                "Type": "ListLayout",
+                "Name": "menu",
+                "Width": 240,
+                "Height": 240,
+                "Direction": "South",
+                "Components": [
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem0",
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem1",
+                    "Y": 30,
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem2",
+                    "Y": 60,
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem3",
+                    "Y": 90,
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem4",
+                    "Y": 120,
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem5",
+                    "Y": 150,
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem6",
+                    "Y": 180,
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  },
+                  {
+                    "Type": "CustomContainerInstance",
+                    "Name": "temperatureMenuItem7",
+                    "Y": 210,
+                    "Width": 240,
+                    "Height": 30,
+                    "CustomContainerDefinitionName": "TemperatureMenuItem"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "Type": "ScrollableContainer",
+            "Name": "scrollableScheduleMenu",
+            "Y": 44,
+            "Width": 240,
+            "Height": 126,
+            "Visible": false,
+            "VerticalScrollEnabled": true,
+            "ScrollbarsAlpha": 255,
+            "Components": [
+              {
+                "Type": "ListLayout",
+                "Name": "scheduleMenu",
+                "Width": 240,
+                "Height": 126,
+                "Direction": "South",
+                "Components": []
+              }
+            ]
+          },
+          {
+            "Type": "Button",
+            "Name": "scheduleButton",
+            "Y": 200,
+            "Width": 120,
+            "Height": 40,
+            "Pressed": "homeautomation\\schedule_button_pressed.png",
+            "Released": "homeautomation\\schedule_button.png"
+          },
+          {
+            "Type": "Button",
+            "Name": "adjustTempButton",
+            "X": 120,
+            "Y": 200,
+            "Width": 120,
+            "Height": 40,
+            "Pressed": "homeautomation\\temperature_adjust_button_pressed.png",
+            "Released": "homeautomation\\temperature_adjust_button.png"
+          },
+          {
+            "Type": "Container",
+            "Name": "jogWheelContainer",
+            "X": 240,
+            "Y": 26,
+            "Width": 240,
+            "Height": 200,
+            "Components": [
+              {
+                "Type": "TextArea",
+                "Name": "temperatureText",
+                "X": 74,
+                "Y": 74,
+                "Width": 100,
+                "Height": 40,
+                "TextId": "TemperatureIndicator",
+                "TextRotation": "0",
+                "Color": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "Wildcard1": {
+                  "UseBuffer": true,
+                  "BufferSize": 5
+                }
+              }
+            ]
+          },
+          {
+            "Type": "Image",
+            "Name": "menuTopBar",
+            "Width": 240,
+            "Height": 26,
+            "RelativeFilename": "homeautomation\\temperature_menu_top_extended.png"
+          },
+          {
+            "Type": "Button",
+            "Name": "exitButton",
+            "X": 2,
+            "Width": 50,
+            "Height": 26,
+            "Pressed": "homeautomation\\exit_button_pressed.png",
+            "Released": "homeautomation\\exit_button.png"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "menuTopBarHeadline",
+            "Y": 6,
+            "Width": 240,
+            "Height": 36,
+            "TextId": "Temperature_menu_headline",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 53,
+              "Green": 188,
+              "Blue": 255
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "scheduleMenuTopBarHeadline",
+            "X": 6,
+            "Y": 6,
+            "Width": 230,
+            "Height": 36,
+            "TextId": "Temperature_menu_headline",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 53,
+              "Green": 188,
+              "Blue": 255
+            },
+            "Alpha": 0
+          },
+          {
+            "Type": "Image",
+            "Name": "scheduleDayNightImage",
+            "Y": 26,
+            "Width": 240,
+            "Height": 18,
+            "RelativeFilename": "homeautomation\\temperature_menu_top_day_night.png"
+          },
+          {
+            "Type": "Button",
+            "Name": "okButton",
+            "X": 120,
+            "Y": 200,
+            "Width": 120,
+            "Height": 40,
+            "Visible": false,
+            "Pressed": "homeautomation\\temperature_ok_button_pressed.png",
+            "Released": "homeautomation\\temperature_ok_button.png"
+          },
+          {
+            "Type": "Button",
+            "Name": "backButton",
+            "Y": 200,
+            "Width": 120,
+            "Height": 40,
+            "Visible": false,
+            "Pressed": "homeautomation\\temperature_cancel_button_pressed.png",
+            "Released": "homeautomation\\temperature_cancel_button.png"
+          },
+          {
+            "Type": "Image",
+            "Name": "sliderBackground",
+            "Y": 170,
+            "Width": 240,
+            "Height": 30,
+            "Visible": false,
+            "RelativeFilename": "homeautomation\\temperature_menu_item_selected.png"
+          }
+        ],
+        "Interactions": []
+      }
+    ],
+    "CustomContainerDefinitions": [
+      {
+        "Name": "CityInfo",
+        "Width": 240,
+        "Height": 202,
+        "Components": [
+          {
+            "Type": "Image",
+            "Name": "background",
+            "Width": 240,
+            "Height": 202,
+            "RelativeFilename": "livedatadisplay\\weather_background_1.png"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "cityNameDropShadow",
+            "X": 41,
+            "Y": 10,
+            "Width": 130,
+            "Height": 24,
+            "TextId": "weather_city_0",
+            "TextRotation": "0",
+            "Alpha": 128
+          },
+          {
+            "Type": "TextArea",
+            "Name": "cityName",
+            "X": 16,
+            "Y": 10,
+            "Width": 130,
+            "Height": 24,
+            "TextId": "weather_city_0",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "timeAndDateDropShadow",
+            "X": 17,
+            "Y": 38,
+            "Width": 150,
+            "Height": 20,
+            "TextId": "weather_time_info_0",
+            "TextRotation": "0",
+            "Alpha": 128
+          },
+          {
+            "Type": "TextArea",
+            "Name": "timeAndDate",
+            "X": 16,
+            "Y": 24,
+            "Width": 150,
+            "Height": 20,
+            "TextId": "weather_time_info_0",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "largeTemperatureDropShadow",
+            "X": 67,
+            "Y": 48,
+            "Width": 150,
+            "Height": 110,
+            "TextId": "weather_large_temperature",
+            "TextRotation": "0",
+            "Alpha": 128,
+            "Wildcard1": {
+              "TextId": "__SingleUse_Y8JC",
+              "UseBuffer": true,
+              "BufferSize": 4
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "largeTemperature",
+            "X": 66,
+            "Y": 46,
+            "Width": 150,
+            "Height": 110,
+            "TextId": "weather_large_temperature",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "Wildcard1": {
+              "TextId": "__SingleUse_9993",
+              "UseBuffer": true,
+              "BufferSize": 4
+            }
+          }
+        ],
+        "Interactions": []
+      },
+      {
+        "Name": "WeekInfo",
+        "Width": 240,
+        "Height": 50,
+        "Components": [
+          {
+            "Type": "Image",
+            "Name": "smallIcon0",
+            "X": 12,
+            "Y": 10,
+            "Width": 36,
+            "Height": 36,
+            "RelativeFilename": "livedatadisplay\\weather_small_icon_cloud.png"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "day0",
+            "X": 48,
+            "Y": 11,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_day_0",
+            "TextRotation": "0"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "smallTemperatureDropShadow0",
+            "X": 49,
+            "Y": 26,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_small_temperature",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 5
+            },
+            "Alpha": 128,
+            "Wildcard1": {
+              "TextId": "__SingleUse_GGH5",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "smallTemperature0",
+            "X": 48,
+            "Y": 25,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_small_temperature",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "Wildcard1": {
+              "TextId": "__SingleUse_VCM4",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          },
+          {
+            "Type": "Image",
+            "Name": "smallIcon1",
+            "X": 86,
+            "Y": 10,
+            "Width": 36,
+            "Height": 36,
+            "RelativeFilename": "livedatadisplay\\weather_small_icon_cloud.png"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "day1",
+            "X": 122,
+            "Y": 11,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_day_1",
+            "TextRotation": "0"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "smallTemperatureDropShadow1",
+            "X": 123,
+            "Y": 26,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_small_temperature",
+            "TextRotation": "0",
+            "Alpha": 128,
+            "Wildcard1": {
+              "TextId": "__SingleUse_ELLK",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "smallTemperature1",
+            "X": 122,
+            "Y": 25,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_small_temperature",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "Wildcard1": {
+              "TextId": "__SingleUse_I8DJ",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          },
+          {
+            "Type": "Image",
+            "Name": "smallIcon2",
+            "X": 160,
+            "Y": 10,
+            "Width": 36,
+            "Height": 36,
+            "RelativeFilename": "livedatadisplay\\weather_small_icon_cloud.png"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "day2",
+            "X": 196,
+            "Y": 11,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_day_2",
+            "TextRotation": "0"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "smallTemperatureDropShadow2",
+            "X": 197,
+            "Y": 26,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_small_temperature",
+            "TextRotation": "0",
+            "Alpha": 128,
+            "Wildcard1": {
+              "TextId": "__SingleUse_7AOQ",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "smallTemperature2",
+            "X": 196,
+            "Y": 25,
+            "Width": 30,
+            "Height": 16,
+            "TextId": "weather_small_temperature",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 255,
+              "Green": 255,
+              "Blue": 255
+            },
+            "Wildcard1": {
+              "TextId": "__SingleUse_TXES",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          }
+        ],
+        "Interactions": []
+      },
+      {
+        "Name": "TemperatureMenuItem",
+        "Width": 240,
+        "Height": 30,
+        "Components": [
+          {
+            "Type": "Image",
+            "Name": "background",
+            "Width": 240,
+            "Height": 30,
+            "RelativeFilename": "homeautomation\\temperature_menu_item.png"
+          },
+          {
+            "Type": "TextArea",
+            "Name": "primaryText",
+            "X": 10,
+            "Y": 7,
+            "Width": 160,
+            "Height": 20,
+            "TextId": "Temperature_Room0",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 169,
+              "Green": 173,
+              "Blue": 182
+            }
+          },
+          {
+            "Type": "TextArea",
+            "Name": "currentTemperature",
+            "X": 180,
+            "Y": 5,
+            "Width": 50,
+            "Height": 24,
+            "TextId": "Temperature_menu",
+            "TextRotation": "0",
+            "Color": {
+              "Red": 169,
+              "Green": 173,
+              "Blue": 182
+            },
+            "Wildcard1": {
+              "TextId": "__SingleUse_XYFP",
+              "UseBuffer": true,
+              "BufferSize": 5
+            }
+          }
+        ],
+        "Interactions": []
+      }
+    ],
+    "Name": "xos_ai",
+    "Resolution": {
+      "Width": 240,
+      "Height": 240
+    },
+    "SelectedColorDepth": 16,
+    "StartupScreenName": "Menu",
+    "SelectedStartupLanguage": "GB",
+    "TouchGfxPath": "../Middlewares/ST/touchgfx",
+    "UIPath": ".",
+    "AvailableColorDepths": [
+      16
+    ],
+    "AvailableLCDs": {
+      "16": "LCD16bpp"
+    },
+    "AvailableSections": [
+      "ExtFlashSection",
+      "IntFlashSection"
+    ],
+    "AvailableResolutions": [
+      {
+        "Width": 240,
+        "Height": 240
+      }
+    ],
+    "PhysicalButtons": [],
+    "FrameworkFeatures": {
+      "LCD16bpp": {
+        "Id": "LCD16bpp",
+        "IsEnabled": true
+      }
+    },
+    "GenerateAssetsCommand": "make -f simulator/gcc/Makefile assets -j8",
+    "PostGenerateCommand": "touchgfx update_project --project-file=simulator/msvs/Application.vcxproj",
+    "PostGenerateTargetCommand": "touchgfx update_project",
+    "CompileSimulatorCommand": "make -f simulator/gcc/Makefile -j8",
+    "RunSimulatorCommand": "build\\bin\\simulator.exe",
+    "CompileTargetCommandOverride": "make -f ../gcc/Makefile -j8",
+    "FlashTargetCommandOverride": "make -f ../gcc/Makefile flash",
+    "LandscapeSkinX": 0,
+    "LandscapeSkinY": 0,
+    "PortraitSkinX": 0,
+    "PortraitSkinY": 0,
+    "DisplayOrientation": "Landscape",
+    "Family": "STM32F4",
+    "SubFamily": "STM32F412",
+    "Toolchain": "STM32CubeIDE",
+    "Platform": "m4",
+    "ProjectFile": "../STM32F412G-DISCO.ioc",
+    "OptionalComponentsRoot": "../Middlewares/ST/touchgfx_components",
+    "OptionalComponents": [],
+    "AdditionalFeatures": []
+  },
+  "Version": "4.26.0",
+  "CreatedBy": "4.26.0"
+}

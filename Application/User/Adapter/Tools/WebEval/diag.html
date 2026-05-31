@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Backend Diag</title></head>
+<body>
+<h2>Backend Connectivity Test</h2>
+<div id="urlcheck" style="background:#ffe0a0;color:#333;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:14px;">
+  <strong>IMPORTANT:</strong> You must open this page via <code>http://127.0.0.1:8787/diag.html</code> (NOT file://).<br>
+  Current URL: <span id="cururl"></span>
+</div>
+<button onclick="testPing()">Test /ping</button>
+<button onclick="testInfer()">Test /infer (no file)</button>
+<button onclick="testInferWav()">Test /infer (with wav)</button>
+<pre id="out"></pre>
+<script>
+document.getElementById('cururl').textContent = location.href;
+if (!location.href.startsWith('http://127.0.0.1:8787') && !location.href.startsWith('http://localhost:8787')) {
+  document.getElementById('urlcheck').style.background = '#ff6060';
+  document.getElementById('urlcheck').style.color = '#fff';
+}
+const out = document.getElementById('out');
+function log(s) { out.textContent += s + '\n'; }
+async function testPing() {
+  out.textContent = '';
+  try {
+    const r = await fetch('/ping');
+    log('Ping status: ' + r.status);
+    log('Ping body: ' + await r.text());
+  } catch(e) { log('Ping ERROR: ' + e.message); }
+}
+async function testInfer() {
+  out.textContent = '';
+  try {
+    const r = await fetch('/infer', { method: 'POST' });
+    log('Infer status: ' + r.status);
+    log('Infer body: ' + await r.text());
+  } catch(e) { log('Infer ERROR: ' + e.message); }
+}
+async function testInferWav() {
+  out.textContent = '';
+  try {
+    // Generate a minimal WAV with 48000Hz 16-bit mono
+    const sampleRate = 48000;
+    const numSamples = 480;
+    const dataSize = numSamples * 2;
+    const buf = new ArrayBuffer(44 + dataSize);
+    const v = new DataView(buf);
+    function ws(o, s) { for(let i=0;i<s.length;i++) v.setUint8(o+i, s.charCodeAt(i)); }
+    ws(0, 'RIFF'); v.setUint32(4, 36+dataSize, true); ws(8, 'WAVE');
+    ws(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+    v.setUint16(22, 1, true); v.setUint32(24, sampleRate, true);
+    v.setUint32(28, sampleRate*2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    ws(36, 'data'); v.setUint32(40, dataSize, true);
+    for(let i=0;i<numSamples;i++) v.setInt16(44+i*2, Math.floor(Math.sin(i*0.1)*10000), true);
+    
+    const blob = new Blob([buf], { type: 'audio/wav' });
+    const form = new FormData();
+    form.append('audio', blob, 'test.wav');
+    const r = await fetch('/infer', { method: 'POST', body: form });
+    log('Infer(wav) status: ' + r.status);
+    log('Infer(wav) body: ' + await r.text());
+  } catch(e) { log('Infer(wav) ERROR: ' + e.message); }
+}
+</script>
+</body>
+</html>

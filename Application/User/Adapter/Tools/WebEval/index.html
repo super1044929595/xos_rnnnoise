@@ -1,0 +1,2220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Siri Style Voice Eval</title>
+  <style>
+    :root {
+      --bg: #020305;
+      --panel: rgba(255,255,255,0.04);
+      --panel-line: rgba(255,255,255,0.08);
+      --text: rgba(255,255,255,0.94);
+      --muted: rgba(255,255,255,0.56);
+      --shadow: 0 22px 64px rgba(0,0,0,0.5);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Segoe UI", "PingFang SC", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 50% 18%, rgba(94, 120, 255, 0.18), transparent 30%),
+        radial-gradient(circle at 20% 80%, rgba(71, 196, 255, 0.09), transparent 28%),
+        radial-gradient(circle at 80% 80%, rgba(214, 97, 255, 0.08), transparent 24%),
+        linear-gradient(180deg, #050608 0%, #020305 55%, #010203 100%);
+      overflow: hidden;
+    }
+    /* ── Responsive breakpoints ───────────────────────────────────────────── */
+    @media (max-width: 1100px) {
+      .layout {
+        flex-direction: column !important;
+        overflow-y: auto;
+      }
+      .splitter { display: none; }
+      .v-splitter { display: none; }
+      .hero { min-width: 0; flex: 0 0 auto; min-height: 420px; max-height: 60vh; }
+      .side { min-width: 0; flex: 0 0 auto; max-height: none; }
+      .side {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        align-content: start;
+      }
+      .side .label-kicker, .side .label-main, .side .label-copy,
+      .side .batch-card, .side .train-card, .side .serial-card {
+        grid-column: 1 / -1;
+      }
+      .shell { padding: 16px; gap: 14px; }
+      .hero { min-height: auto; }
+      .hero-inner { gap: 14px; }
+      .wave-stage { min-height: 180px; }
+      .headline { font-size: clamp(24px, 5vw, 48px) !important; }
+      .score-list { max-height: 160px; }
+    }
+    @media (max-width: 680px) {
+      .side {
+        grid-template-columns: 1fr;
+      }
+      .controls { flex-direction: column; align-items: flex-start; }
+      .buttons { width: 100%; flex-wrap: wrap; }
+      .buttons button { flex: 1; min-width: 0; font-size: 13px; padding: 10px 14px; }
+      select { min-width: 0; width: 100%; font-size: 12px; }
+      .metrics { grid-template-columns: 1fr 1fr; }
+      .headline { font-size: clamp(20px, 6vw, 36px) !important; }
+      .label-main { font-size: clamp(22px, 5vw, 36px) !important; }
+      .wave-stage { min-height: 150px; }
+      .hero { min-height: 360px; max-height: 55vh; padding: 16px; }
+      .side { padding: 16px; gap: 12px; }
+      .shell { padding: 10px; gap: 10px; }
+      .score-list { max-height: 140px; }
+      .device-row { width: 100%; }
+      .train-row { flex-direction: column; }
+      .train-row input { width: 100%; }
+      .serial-row { flex-direction: column; }
+      .serial-row label { width: 100%; }
+      .serial-row select, .serial-row input { width: 100%; }
+    }
+    @media (min-width: 1400px) {
+      .shell { padding: 32px; gap: 28px; }
+      .hero { padding: 36px; }
+      .side { padding: 30px; gap: 22px; }
+      .wave-stage { min-height: 380px; }
+    }
+    @media (min-width: 1800px) {
+      .shell { max-width: 1800px; margin: 0 auto; padding: 40px; gap: 32px; }
+    }
+    .shell {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 22px;
+      padding: 24px;
+      overflow: hidden;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand {
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .tag {
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--panel-line);
+      color: var(--muted);
+      font-size: 12px;
+      backdrop-filter: blur(18px);
+    }
+    .layout {
+      display: flex;
+      gap: 0;
+      min-height: 0;
+      flex: 1;
+      overflow: hidden;
+    }
+    .hero, .side {
+      border: 1px solid var(--panel-line);
+      border-radius: 30px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(24px);
+      min-height: 0;
+    }
+    .hero { flex: 1 1 0; min-width: 320px; overflow: hidden; }
+    .side { flex: 0 0 auto; min-width: 260px; overflow: hidden; }
+    /* ── Splitter handle ──────────────────────────────────────────────── */
+    .splitter {
+      flex: 0 0 10px;
+      cursor: col-resize;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .15s ease;
+    }
+    .splitter:hover, .splitter.active {
+      background: rgba(102,182,255,0.12);
+    }
+    .splitter::after {
+      content: '';
+      width: 3px;
+      height: 48px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      transition: background .15s ease, height .15s ease;
+    }
+    .splitter:hover::after, .splitter.active::after {
+      background: rgba(102,182,255,0.65);
+      height: 72px;
+    }
+    /* ── Vertical splitter inside hero for wave-stage ────────────────── */
+    .hero .wave-area {
+      flex: 1 1 0;
+      min-height: 100px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .hero .wave-stage {
+      flex: 1;
+      min-height: 0;
+    }
+    .v-splitter {
+      flex: 0 0 8px;
+      cursor: row-resize;
+      position: relative;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: -6px 0;
+      transition: background .15s ease;
+      border-radius: 4px;
+    }
+    .v-splitter:hover, .v-splitter.active {
+      background: rgba(102,182,255,0.12);
+    }
+    .v-splitter::after {
+      content: '';
+      height: 3px;
+      width: 48px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.18);
+      transition: background .15s ease, width .15s ease;
+    }
+    .v-splitter:hover::after, .v-splitter.active::after {
+      background: rgba(102,182,255,0.65);
+      width: 72px;
+    }
+    .hero {
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .hero .eyebrow { flex-shrink: 0; }
+    .hero .headline {
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hero .headline-sub { flex-shrink: 0; }
+    .hero .subcopy {
+      flex-shrink: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (max-width: 680px) {
+      .hero .subcopy { white-space: normal; }
+    }
+    .hero .hero-inner {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      gap: 20px;
+      overflow: hidden;
+    }
+    .eyebrow {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .headline {
+      font-size: clamp(36px, 5vw, 68px);
+      line-height: 0.92;
+      letter-spacing: -0.05em;
+      margin: 0;
+      max-width: 22ch;
+    }
+    .headline-sub {
+      font-size: clamp(20px, 2.8vw, 36px);
+      color: var(--muted);
+      margin-top: 6px;
+      font-weight: 400;
+    }
+    .subcopy {
+      max-width: 54ch;
+      line-height: 1.7;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .wave-stage {
+      position: relative;
+      border-radius: 28px;
+      overflow: hidden;
+      min-height: 100px;
+      background:
+        radial-gradient(circle at 50% 60%, rgba(124,131,255,0.16), transparent 30%),
+        radial-gradient(circle at 50% 40%, rgba(102,182,255,0.12), transparent 26%),
+        linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    canvas { width: 100%; height: 100%; display: block; }
+    .wave-glow {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(141,247,255,0.08), transparent 34%),
+        radial-gradient(circle at 50% 55%, rgba(244,166,255,0.07), transparent 26%);
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+    .device-row {
+      flex-shrink: 0;
+    }
+    .buttons { display: flex; gap: 12px; }
+    .device-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .device-row label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    select {
+      min-width: 180px;
+      max-width: 100%;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      padding: 10px 14px;
+      font-size: 14px;
+      outline: none;
+    }
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 14px 20px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: transform .18s ease, opacity .18s ease, background .18s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.38; cursor: not-allowed; transform: none; }
+    .primary {
+      background: linear-gradient(135deg, rgba(102,182,255,0.92), rgba(124,131,255,0.92));
+      color: #04111d;
+      font-weight: 600;
+      min-width: 100px;
+      white-space: nowrap;
+    }
+    .secondary, .ghost {
+      background: rgba(255,255,255,0.05);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.08);
+      min-width: 100px;
+      white-space: nowrap;
+    }
+    .status {
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .side {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      max-height: 100%;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    .side > * {
+      flex-shrink: 0;
+    }
+    .side::-webkit-scrollbar { width: 4px; }
+    .side::-webkit-scrollbar-track { background: transparent; }
+    .side::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 999px; }
+    .side::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+    .label-kicker {
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .label-main {
+      font-size: clamp(22px, 3.5vw, 44px);
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      max-width: 100%;
+    }
+    .label-copy {
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: clamp(12px, 1.2vw, 14px);
+    }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: clamp(8px, 1vw, 12px);
+    }
+    .metric {
+      padding: clamp(10px, 1.2vw, 14px);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .metric .k {
+      font-size: clamp(10px, 0.9vw, 11px);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .metric .v {
+      font-size: clamp(18px, 2vw, 24px);
+      letter-spacing: -0.04em;
+    }
+    .score-list {
+      display: grid;
+      gap: clamp(8px, 1vw, 12px);
+      overflow-y: auto;
+      max-height: 200px;
+      padding-right: 4px;
+    }
+    .score-row {
+      display: grid;
+      grid-template-columns: 80px 1fr 44px;
+      gap: 8px;
+      align-items: center;
+      font-size: clamp(11px, 1.1vw, 13px);
+      color: var(--text);
+      min-height: 0;
+    }
+    .score-track {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    .score-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(102,182,255,0.9));
+      box-shadow: 0 0 18px rgba(141,247,255,0.35);
+      transition: width .24s ease;
+    }
+    .batch-card {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .batch-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .batch-text {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .foot {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 0 4px;
+    }
+    .train-card {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+    }
+    .train-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+    .train-row input {
+      flex: 1;
+      min-width: 80px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+    }
+    .train-row input:focus {
+      border-color: rgba(94,120,255,0.5);
+    }
+    .train-keywords {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .train-keywords span {
+      display: inline-block;
+      background: rgba(255,255,255,0.06);
+      border-radius: 6px;
+      padding: 3px 8px;
+      margin: 2px 4px 2px 0;
+    }
+    .train-status {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+    /* Serial panel */
+    .serial-card {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .serial-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .serial-row label {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .serial-row select, .serial-row input {
+      min-width: 80px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(94,120,255,0.12);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+    }
+    .serial-row select option, .serial-row input {
+      background: rgba(30,35,55,0.95);
+      color: var(--text);
+    }
+    .serial-row select:focus, .serial-row input:focus {
+      border-color: rgba(94,120,255,0.5);
+      background: rgba(94,120,255,0.18);
+    }
+    .serial-row input[type="range"] {
+      flex: 1;
+      min-width: 80px;
+      padding: 0;
+      height: 4px;
+      border: none;
+      background: rgba(255,255,255,0.12);
+      border-radius: 2px;
+      appearance: none;
+      cursor: pointer;
+    }
+    .serial-cmd-list {
+      margin-top: 8px;
+      display: grid;
+      gap: 6px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+    .serial-cmd-row {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 6px;
+      align-items: center;
+    }
+    .serial-cmd-row .kw-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: right;
+    }
+    .serial-cmd-row input {
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 12px;
+      outline: none;
+    }
+    .serial-cmd-row input:focus {
+      border-color: rgba(94,120,255,0.5);
+    }
+    .serial-indicator {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .serial-indicator.on { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.6); }
+    .serial-indicator.off { background: #f87171; }
+
+    /* Toast notification */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+      color: #000;
+      padding: 14px 22px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 8px 32px rgba(34,197,94,0.35);
+      animation: toastIn 0.35s ease-out, toastOut 0.3s ease-in 2.5s forwards;
+      pointer-events: auto;
+      cursor: pointer;
+      max-width: 360px;
+      line-height: 1.4;
+    }
+    .toast.warn {
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      box-shadow: 0 8px 32px rgba(245,158,11,0.35);
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(40px) scale(0.92); }
+      to { opacity: 1; transform: translateX(0) scale(1); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateX(0) scale(1); }
+      to { opacity: 0; transform: translateX(20px) scale(0.94); }
+    }
+  </style>
+</head>
+<body>
+  <div class="toast-container" id="toastContainer"></div>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand">Voice Evaluation Surface</div>
+      <div class="tag" id="topbarTag">加载模型...</div>
+    </div>
+    <div class="layout">
+      <section class="hero">
+        <div class="eyebrow">Microphone Validation</div>
+        <h1 class="headline">说一句话，获取原始数据用于设备端样本</h1>
+        <div class="headline-sub">（XOS）</div>
+        <div class="subcopy">
+          采集原始 PCM，不再经过压缩链路。支持多关键词同时识别，模型将下发至嵌入式设备端（XOS 2025-05-31）。
+        </div>
+        <div class="hero-inner">
+          <div class="wave-area">
+            <div class="wave-stage">
+              <canvas id="wave"></canvas>
+              <div class="wave-glow"></div>
+            </div>
+          </div>
+          <div class="v-splitter" id="vSplitter"></div>
+          <div class="controls">
+            <div class="buttons">
+              <button id="start" class="primary">开始录音</button>
+              <button id="stop" class="secondary" disabled>停止并识别</button>
+            </div>
+            <div id="status" class="status">等待录音</div>
+          </div>
+        </div>
+        <div class="device-row">
+          <label for="micSelect">输入设备</label>
+          <select id="micSelect"></select>
+        </div>
+      </section>
+
+      <div class="splitter" id="hSplitter"></div>
+
+      <aside class="side">
+        <div class="label-kicker">Result</div>
+        <div id="label" class="label-main">尚未识别</div>
+        <div id="resultCopy" class="label-copy">
+          这里展示的是基于真实 PCM 的录音结果，支持多关键词同时识别。如果峰值很小，那就是输入振幅真的太低，而不是解码链路的问题。
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="k">置信度</div>
+            <div id="confidence" class="v">-</div>
+          </div>
+          <div class="metric">
+            <div class="k">录音峰值</div>
+            <div id="peak" class="v">-</div>
+          </div>
+        </div>
+
+        <div class="label-kicker">Class Scores</div>
+        <div id="scores" class="score-list"></div>
+
+        <div class="batch-card">
+          <div class="label-kicker">Batch Eval</div>
+          <div class="batch-summary">
+            <button id="batch" class="ghost">批量验证正确率</button>
+            <div id="batchText" class="batch-text">验证当前模型在数据集上的整体准确率。</div>
+          </div>
+        </div>
+
+        <div class="train-card">
+          <div class="label-kicker">Train New Keyword</div>
+          <div class="train-row">
+            <input id="kwName" type="text" placeholder="关键词名称 (如: ni_hao)" maxlength="32">
+            <button id="kwRecord" class="ghost">录制样本</button>
+            <button id="kwTrain" class="ghost">训练模型</button>
+          </div>
+          <div class="train-row" style="margin-top:6px;">
+            <button id="kwRecordUnknown" class="ghost" style="background:rgba(255,180,50,0.12);border-color:rgba(255,180,50,0.25);">录制非关键词</button>
+            <button id="kwCompile" class="ghost" style="background:rgba(71,196,255,0.12);border-color:rgba(71,196,255,0.25);">生成嵌入式设备（耳机端）权重</button>
+          </div>
+          <div id="kwList" class="train-keywords">加载中...</div>
+          <div id="trainStatus" class="train-status"></div>
+          <div style="margin-top:6px;font-size:11px;color:var(--muted);line-height:1.5;">
+            提高识别率要点：每个关键词至少录制10条样本，非关键词也需10条以上。样本太少会导致识别率低。
+          </div>
+        </div>
+
+        <div class="serial-card">
+          <div class="label-kicker">Serial Output to MCU</div>
+          <div class="serial-row">
+            <label for="serialPort">端口</label>
+            <select id="serialPort" style="flex:1;min-width:100px;">
+              <option value="">-- 刷新端口 --</option>
+            </select>
+            <button id="serialRefresh" class="ghost" style="min-width:auto;padding:6px 12px;font-size:12px;">刷新</button>
+          </div>
+          <div class="serial-row">
+            <label for="serialBaud">波特率</label>
+            <select id="serialBaud" style="flex:1;min-width:100px;">
+              <option value="9600">9600</option>
+              <option value="19200">19200</option>
+              <option value="38400">38400</option>
+              <option value="57600">57600</option>
+              <option value="115200" selected>115200</option>
+              <option value="230400">230400</option>
+              <option value="460800">460800</option>
+              <option value="921600">921600</option>
+            </select>
+          </div>
+          <div class="serial-row">
+            <label for="serialThreshold">触发阈值</label>
+            <input type="range" id="serialThreshold" min="50" max="99" value="85" style="flex:1;">
+            <span id="serialThresholdVal" style="font-size:12px;color:var(--muted);min-width:36px;text-align:right;">85%</span>
+          </div>
+          <div class="label-kicker" style="margin-top:8px;">Per-Keyword Command</div>
+          <div id="serialCmdList" class="serial-cmd-list">
+            <div style="font-size:11px;color:var(--muted);">加载关键词中...</div>
+          </div>
+          <div class="serial-row">
+            <button id="serialConnect" class="primary" style="min-width:auto;padding:10px 16px;font-size:13px;">连接串口</button>
+            <button id="serialDisconnect" class="secondary" style="min-width:auto;padding:10px 16px;font-size:13px;" disabled>断开</button>
+            <span style="font-size:11px;color:var(--muted);display:flex;align-items:center;">
+              <span id="serialIndicator" class="serial-indicator off"></span>
+              <span id="serialStatus">未连接</span>
+            </span>
+          </div>
+          <div id="serialHint" style="margin-top:4px;font-size:10px;color:var(--muted);">
+            指令中 \\r 表示回车，\\n 表示换行。例: AT+LED=1\\r\\n
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="foot">
+      <div>如果现在录音峰值仍然非常小，就该查系统输入音量或输入设备本身。</div>
+      <div>纯前端推理 · 原始 PCM 捕获</div>
+    </div>
+  </div>
+
+  <script src="model_data.js"></script>
+  <script>
+    const INPUT_FEATURES = 36;
+    const TARGET_SR = 48000;
+    const DECIM_STRIDE = 3;
+    const FRAME_SAMPLES = 480;
+    const FFT_SIZE = 512;
+    const MFCC_COUNT = 12;
+    const MEL_BINS = 20;
+    const MEL_SUMMARY = 16;
+    const MEL_EDGES = [9,13,16,21,25,31,37,43,50,58,67,77,87,99,113,127,144,162,182,204,229,256];
+    const ACCEPT_THRESHOLD = 0.72;
+    const STRONG_THRESHOLD = 0.85;
+    const DCT_Q8 = [
+      [256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256,256],
+      [255,249,237,218,195,166,134,98,60,20,-20,-60,-98,-134,-166,-195,-218,-237,-249,-255],
+      [253,228,181,116,40,-40,-116,-181,-228,-253,-253,-228,-181,-116,-40,40,116,181,228,253],
+      [249,195,98,-20,-134,-218,-255,-237,-166,-60,60,166,237,255,218,134,20,-98,-195,-249],
+      [243,150,0,-150,-243,-243,-150,0,150,243,243,150,0,-150,-243,-243,-150,0,150,243],
+      [237,98,-98,-237,-237,-98,98,237,237,98,-98,-237,-237,-98,98,237,237,98,-98,-237],
+      [228,40,-181,-253,-116,116,253,181,-40,-228,-228,-40,181,253,116,-116,-253,-181,40,228],
+      [218,-20,-237,-195,60,249,166,-98,-255,-134,134,255,98,-166,-249,-60,195,237,20,-218],
+      [207,-79,-256,-79,207,207,-79,-256,-79,207,207,-79,-256,-79,207,207,-79,-256,-79,207],
+      [195,-134,-237,60,255,20,-249,-98,218,166,-166,-218,98,249,-20,-255,-60,237,134,-195],
+      [181,-181,-181,181,181,-181,-181,181,181,-181,-181,181,181,-181,-181,181,181,-181,-181,181],
+      [166,-218,-98,249,20,-255,60,237,-134,-195,195,134,-237,-60,255,-20,-249,98,218,-166]
+    ];
+
+    let audioCtx = null;
+    let analyser = null;
+    let sourceNode = null;
+    let processorNode = null;
+    let sinkGainNode = null;
+    let activeStream = null;
+    let selectedDeviceId = '';
+    let animId = 0;
+    let recording = false;
+    let pcmChunks = [];
+    let currentInputLevel = 0;
+    let lastRawPeak = 0;
+    // Real-time inference
+    let rtBuffer = new Float32Array(0);
+    let rtFrameCount = 0;
+    const RT_INTERVAL = 8; // run inference every N audio callbacks (~170ms)
+    let rtBestLabel = '';
+    let rtBestConf = 0;
+
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const statusEl = document.getElementById('status');
+    const labelEl = document.getElementById('label');
+    const resultCopyEl = document.getElementById('resultCopy');
+    const confidenceEl = document.getElementById('confidence');
+    const peakEl = document.getElementById('peak');
+    const scoresEl = document.getElementById('scores');
+    const batchBtn = document.getElementById('batch');
+    const batchText = document.getElementById('batchText');
+    const kwNameEl = document.getElementById('kwName');
+    const kwRecordBtn = document.getElementById('kwRecord');
+    const kwTrainBtn = document.getElementById('kwTrain');
+    const kwCompileBtn = document.getElementById('kwCompile');
+    const kwRecordUnknownBtn = document.getElementById('kwRecordUnknown');
+    const kwListEl = document.getElementById('kwList');
+    const trainStatusEl = document.getElementById('trainStatus');
+    const micSelect = document.getElementById('micSelect');
+    const canvas = document.getElementById('wave');
+    const ctx = canvas.getContext('2d');
+
+    // Serial port elements
+    const serialPortEl = document.getElementById('serialPort');
+    const serialRefreshEl = document.getElementById('serialRefresh');
+    const serialBaudEl = document.getElementById('serialBaud');
+    const serialThresholdEl = document.getElementById('serialThreshold');
+    const serialThresholdValEl = document.getElementById('serialThresholdVal');
+    const serialCmdListEl = document.getElementById('serialCmdList');
+    const serialConnectEl = document.getElementById('serialConnect');
+    const serialDisconnectEl = document.getElementById('serialDisconnect');
+    const serialIndicatorEl = document.getElementById('serialIndicator');
+    const serialStatusEl = document.getElementById('serialStatus');
+    const serialHintEl = document.getElementById('serialHint');
+
+    function clampS8(v) { return v > 127 ? 127 : (v < -128 ? -128 : v); }
+    function log2u32(v) { let r = 0; while (v > 1) { v >>= 1; r++; } return r; }
+    function softmax(arr) {
+      const max = Math.max(...arr);
+      const exps = arr.map(v => Math.exp(v - max));
+      const sum = exps.reduce((a, b) => a + b, 0);
+      return exps.map(v => v / sum);
+    }
+
+    function inferFeature(feat) {
+      const { w0, b0, w1, b1, w2, b2, labels } = window.MODEL_DATA;
+      const a0 = new Array(w0[0].length).fill(0).map((_, j) => {
+        let acc = b0[j];
+        for (let i = 0; i < feat.length; i++) acc += feat[i] * w0[i][j];
+        return Math.max(0, acc);
+      });
+      const a1 = new Array(w1[0].length).fill(0).map((_, j) => {
+        let acc = b1[j];
+        for (let i = 0; i < a0.length; i++) acc += a0[i] * w1[i][j];
+        return Math.max(0, acc);
+      });
+      const logits = new Array(w2[0].length).fill(0).map((_, j) => {
+        let acc = b2[j];
+        for (let i = 0; i < a1.length; i++) acc += a1[i] * w2[i][j];
+        return acc;
+      });
+      const probs = softmax(logits);
+      let idx = 0;
+      for (let i = 1; i < probs.length; i++) if (probs[i] > probs[idx]) idx = i;
+      const scores = {};
+      labels.forEach((l, i) => scores[l] = probs[i]);
+      return { label: labels[idx], confidence: probs[idx], scores };
+    }
+
+    function linearResample(x, srcSr, dstSr) {
+      if (srcSr === dstSr) return x;
+      const dstLen = Math.max(1, Math.round(x.length * dstSr / srcSr));
+      const out = new Float32Array(dstLen);
+      for (let i = 0; i < dstLen; i++) {
+        const pos = (i * (x.length - 1)) / (dstLen - 1 || 1);
+        const left = Math.floor(pos);
+        const right = Math.min(x.length - 1, left + 1);
+        const frac = pos - left;
+        out[i] = x[left] * (1 - frac) + x[right] * frac;
+      }
+      return out;
+    }
+
+    function prepareFrame(pcm) {
+      if (!pcm || pcm.length === 0) {
+        return new Int16Array(FRAME_SAMPLES);
+      }
+      if (pcm.length < FRAME_SAMPLES) {
+        const out = new Int16Array(FRAME_SAMPLES);
+        out.set(pcm);
+        return out;
+      }
+      if (pcm.length > FRAME_SAMPLES) {
+        const start = Math.max(0, Math.floor((pcm.length - FRAME_SAMPLES) / 2));
+        const frame = new Int16Array(FRAME_SAMPLES);
+        frame.set(pcm.subarray(start, start + FRAME_SAMPLES));
+        return frame;
+      }
+      if (pcm.length === FRAME_SAMPLES && pcm instanceof Int16Array) {
+        return new Int16Array(pcm);
+      }
+      return new Int16Array(pcm);
+    }
+
+    function runtimeLikeFeatures(frame) {
+      const decimated = new Float32Array(FFT_SIZE);
+      let energyAcc = 0, zcr = 0, peak = 0;
+      let prev = frame[0];
+      for (let i = 0; i < FRAME_SAMPLES / DECIM_STRIDE; i++) {
+        const idx = i * DECIM_STRIDE;
+        const sample = frame[idx];
+        decimated[i] = sample;
+        energyAcc += Math.abs(sample);
+        peak = Math.max(peak, Math.abs(sample));
+        if ((prev < 0 && sample >= 0) || (prev >= 0 && sample < 0)) zcr++;
+        prev = sample;
+      }
+      const spec = fftMag(decimated);
+      const mel = new Array(MEL_BINS).fill(0);
+      for (let band = 0; band < MEL_BINS; band++) {
+        const start = MEL_EDGES[band], center = MEL_EDGES[band + 1], end = MEL_EDGES[band + 2];
+        for (let bin = start; bin < end; bin++) {
+          const weight = bin < center ? (bin - start + 1) : (end - bin);
+          mel[band] += spec[bin] * weight;
+        }
+      }
+      const feat = new Array(INPUT_FEATURES).fill(0);
+      const melLogs = mel.map(v => log2u32((v >> 12) + 1));
+      for (let i = 0; i < MFCC_COUNT; i++) {
+        let acc = 0;
+        for (let b = 0; b < MEL_BINS; b++) acc += DCT_Q8[i][b] * melLogs[b];
+        feat[i] = clampS8(acc >> 6);
+      }
+      let low = 0, mid = 0, high = 0, flux = 0, centroidNum = 0, centroidDen = 0, rolloffDen = 0, rolloffAcc = 0, rolloffBin = 0, prevBin = 0;
+      for (let bin = 1; bin <= FFT_SIZE / 2; bin++) {
+        const m = spec[bin] >> 8;
+        centroidNum += bin * m;
+        centroidDen += m;
+        rolloffDen += m;
+        if (bin < 32) low += m;
+        else if (bin < 96) mid += m;
+        else high += m;
+        if (bin > 1) flux += Math.abs(m - prevBin);
+        prevBin = m;
+      }
+      for (let bin = 1; bin <= FFT_SIZE / 2; bin++) {
+        const m = spec[bin] >> 8;
+        rolloffAcc += m;
+        if (rolloffAcc * 20 >= rolloffDen * 17) { rolloffBin = bin; break; }
+      }
+      feat[12] = clampS8(Math.floor(energyAcc / (FRAME_SAMPLES / DECIM_STRIDE)));
+      feat[13] = Math.min(zcr, 127);
+      feat[14] = clampS8(log2u32(energyAcc + 1) * 8);
+      feat[15] = clampS8(peak >> 8);
+      feat[16] = clampS8(log2u32(low + 1) * 8 - 64);
+      feat[17] = clampS8(log2u32(mid + 1) * 8 - 64);
+      feat[18] = clampS8(log2u32(high + 1) * 8 - 64);
+      feat[19] = clampS8(centroidDen === 0 ? 0 : Math.floor((centroidNum * 127) / (centroidDen * (FFT_SIZE / 2))));
+      feat[20] = clampS8(Math.floor((rolloffBin * 127) / (FFT_SIZE / 2)));
+      feat[21] = clampS8(log2u32(flux + 1) * 8 - 64);
+      feat[22] = clampS8(peak === 0 ? 0 : Math.floor(((energyAcc / (FRAME_SAMPLES / DECIM_STRIDE)) * 127) / peak));
+      feat[23] = clampS8(log2u32(rolloffDen + 1) * 8 - 64);
+      const summarySlots = INPUT_FEATURES - 24;
+      for (let band = 0; band < Math.min(MEL_SUMMARY, summarySlots); band++) {
+        const src = Math.floor((band * MEL_BINS) / MEL_SUMMARY);
+        const srcNext = Math.floor(((band + 1) * MEL_BINS) / MEL_SUMMARY);
+        const seg = mel.slice(src, srcNext);
+        const avg = seg.length ? seg.reduce((a, b) => a + b, 0) / seg.length : 0;
+        const logv = log2u32((avg >> 12) + 1);
+        feat[24 + band] = logv > 15 ? 63 : (logv * 8 - 64);
+      }
+      return feat;
+    }
+
+    function fftMag(signal) {
+      const re = new Float32Array(FFT_SIZE);
+      const im = new Float32Array(FFT_SIZE);
+      re.set(signal);
+      fft(re, im);
+      const out = new Array(FFT_SIZE / 2 + 1).fill(0);
+      for (let i = 0; i < out.length; i++) out[i] = Math.floor(Math.hypot(re[i], im[i]));
+      return out;
+    }
+
+    function fft(re, im) {
+      const n = re.length;
+      for (let i = 1, j = 0; i < n; i++) {
+        let bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) {
+          [re[i], re[j]] = [re[j], re[i]];
+          [im[i], im[j]] = [im[j], im[i]];
+        }
+      }
+      for (let len = 2; len <= n; len <<= 1) {
+        const ang = -2 * Math.PI / len;
+        const wlenCos = Math.cos(ang);
+        const wlenSin = Math.sin(ang);
+        for (let i = 0; i < n; i += len) {
+          let wCos = 1, wSin = 0;
+          for (let j = 0; j < len / 2; j++) {
+            const uRe = re[i + j], uIm = im[i + j];
+            const vRe = re[i + j + len / 2] * wCos - im[i + j + len / 2] * wSin;
+            const vIm = re[i + j + len / 2] * wSin + im[i + j + len / 2] * wCos;
+            re[i + j] = uRe + vRe;
+            im[i + j] = uIm + vIm;
+            re[i + j + len / 2] = uRe - vRe;
+            im[i + j + len / 2] = uIm - vIm;
+            const nextCos = wCos * wlenCos - wSin * wlenSin;
+            const nextSin = wCos * wlenSin + wSin * wlenCos;
+            wCos = nextCos;
+            wSin = nextSin;
+          }
+        }
+      }
+    }
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+    }
+
+    function drawAmbientLines(time = 0) {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      for (let layer = 0; layer < 4; layer++) {
+        const amp = 10 + layer * 8;
+        const alpha = 0.18 + layer * 0.09;
+        const blur = 10 + layer * 10;
+        const speed = 0.0015 + layer * 0.0007;
+        ctx.beginPath();
+        ctx.lineWidth = 1.6 + layer * 0.6;
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+        ctx.shadowBlur = blur;
+        ctx.shadowColor = layer % 2 === 0 ? 'rgba(141,247,255,0.22)' : 'rgba(244,166,255,0.2)';
+        for (let x = 0; x <= w; x += 4) {
+          const y = h / 2 + Math.sin(x * 0.014 + time * speed * 1000 + layer) * amp * 0.22;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    function startWave() {
+      const timeData = new Uint8Array(analyser.fftSize);
+      function loop(t) {
+        const w = canvas.clientWidth;
+        const h = canvas.clientHeight;
+        ctx.clearRect(0, 0, w, h);
+        drawAmbientLines(t);
+        analyser.getByteTimeDomainData(timeData);
+        let sum = 0;
+        for (let i = 0; i < timeData.length; i++) {
+          const v = (timeData[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / timeData.length);
+        currentInputLevel = Math.min(1, Math.pow(rms * 28.0, 0.8));
+        // status text handled by real-time inference, don't overwrite
+
+        const layers = [
+          { amp: 0.22 + currentInputLevel * 0.30, alpha: 0.14, blur: 24 },
+          { amp: 0.16 + currentInputLevel * 0.24, alpha: 0.24, blur: 18 },
+          { amp: 0.10 + currentInputLevel * 0.18, alpha: 0.86, blur: 10 },
+        ];
+        for (const layer of layers) {
+          ctx.beginPath();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = `rgba(255,255,255,${layer.alpha})`;
+          ctx.shadowBlur = layer.blur;
+          ctx.shadowColor = 'rgba(255,255,255,0.25)';
+          for (let i = 0; i < timeData.length; i++) {
+            const x = (i / (timeData.length - 1)) * w;
+            const v = (timeData[i] - 128) / 128;
+            const y = h / 2 + v * (h * layer.amp);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        animId = requestAnimationFrame(loop);
+      }
+      animId = requestAnimationFrame(loop);
+    }
+
+    function stopWave() {
+      if (animId) cancelAnimationFrame(animId);
+      animId = 0;
+      drawAmbientLines();
+    }
+
+    function renderScores(scores) {
+      scoresEl.innerHTML = '';
+      Object.entries(scores).forEach(([label, score]) => {
+        const row = document.createElement('div');
+        row.className = 'score-row';
+        row.innerHTML = `
+          <div>${label}</div>
+          <div class="score-track"><div class="score-fill" style="width:${(score * 100).toFixed(1)}%"></div></div>
+          <div>${(score * 100).toFixed(1)}%</div>
+        `;
+        scoresEl.appendChild(row);
+      });
+    }
+
+    async function refreshDevices() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const mics = devices.filter(d => d.kind === 'audioinput');
+      micSelect.innerHTML = '';
+      mics.forEach((mic, idx) => {
+        const opt = document.createElement('option');
+        opt.value = mic.deviceId;
+        opt.textContent = mic.label || `麦克风 ${idx + 1}`;
+        micSelect.appendChild(opt);
+      });
+      if (!selectedDeviceId && mics.length > 0) selectedDeviceId = mics[0].deviceId;
+      if (selectedDeviceId) micSelect.value = selectedDeviceId;
+    }
+
+    function teardownAudioGraph() {
+      if (processorNode) {
+        processorNode.disconnect();
+        processorNode.onaudioprocess = null;
+        processorNode = null;
+      }
+      if (sinkGainNode) {
+        sinkGainNode.disconnect();
+        sinkGainNode = null;
+      }
+      if (sourceNode) {
+        sourceNode.disconnect();
+        sourceNode = null;
+      }
+      if (analyser) {
+        analyser.disconnect();
+        analyser = null;
+      }
+    }
+
+    function releaseStream() {
+      if (activeStream) {
+        activeStream.getTracks().forEach(t => t.stop());
+        activeStream = null;
+      }
+    }
+
+    async function ensureAudioGraph() {
+      if (audioCtx && activeStream && sourceNode && processorNode) {
+        return;
+      }
+
+      teardownAudioGraph();
+
+      if (audioCtx) {
+        await audioCtx.close();
+        audioCtx = null;
+      }
+
+      releaseStream();
+
+      selectedDeviceId = micSelect.value || selectedDeviceId;
+      activeStream = await navigator.mediaDevices.getUserMedia({
+        audio: selectedDeviceId ? { deviceId: { exact: selectedDeviceId } } : true
+      });
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      await audioCtx.resume();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.88;
+      sourceNode = audioCtx.createMediaStreamSource(activeStream);
+      processorNode = audioCtx.createScriptProcessor(1024, 1, 1);
+      sinkGainNode = audioCtx.createGain();
+      sinkGainNode.gain.value = 0;
+
+      sourceNode.connect(analyser);
+      sourceNode.connect(processorNode);
+      processorNode.connect(sinkGainNode);
+      sinkGainNode.connect(audioCtx.destination);
+
+      processorNode.onaudioprocess = (event) => {
+        if (!recording && !kwRecording && !kwUnknownRecording) return;
+        const input = event.inputBuffer.getChannelData(0);
+        let peak = 0;
+        for (let i = 0; i < input.length; i++) {
+          const a = Math.abs(input[i]);
+          if (a > peak) peak = a;
+        }
+        if (peak > lastRawPeak) lastRawPeak = peak;
+        pcmChunks.push(new Float32Array(input));
+
+        // Real-time inference: accumulate into rolling buffer
+        const newBuf = new Float32Array(rtBuffer.length + input.length);
+        newBuf.set(rtBuffer); newBuf.set(input, rtBuffer.length);
+        // Keep last ~1.5s worth of audio
+        const maxSamples = Math.floor(audioCtx.sampleRate * 1.5);
+        if (newBuf.length > maxSamples) {
+          rtBuffer = newBuf.slice(newBuf.length - maxSamples);
+        } else {
+          rtBuffer = newBuf;
+        }
+
+        rtFrameCount++;
+        if (rtFrameCount >= RT_INTERVAL && recording && rtBuffer.length > 2048) {
+          rtFrameCount = 0;
+          runRealtimeInfer();
+        }
+      };
+    }
+
+    function runRealtimeInfer() {
+      if (!window.MODEL_DATA || rtBuffer.length < 2048) return;
+      try {
+        const resampled = linearResample(rtBuffer, audioCtx.sampleRate, TARGET_SR);
+        // Scale [-1,1] float to int16 range before feature extraction
+        const scaled = new Float32Array(resampled.length);
+        for (let i = 0; i < resampled.length; i++) scaled[i] = resampled[i] * 32767;
+        const frame = prepareFrame(float32ToInt16(scaled));
+        const peak = frame.reduce(function(m, v) { return Math.max(m, Math.abs(v)); }, 0);
+        var result;
+        const SILENCE_PEAK = 100;
+        if (peak < SILENCE_PEAK) {
+          const labels = window.MODEL_DATA.labels;
+          const unkIdx = labels.indexOf('unknown');
+          const scores = {};
+          labels.forEach(function(l, i) { scores[l] = (i === unkIdx) ? 1.0 : 0.0; });
+          result = { label: 'unknown', confidence: 1.0, scores: scores, gated: true };
+        } else {
+          const feat = runtimeLikeFeatures(frame);
+          result = inferFeature(feat);
+        }
+        rtBestLabel = result.label;
+        rtBestConf = result.confidence;
+
+        const isKw = result.label !== 'unknown';
+        const pct = (result.confidence * 100).toFixed(0);
+        let line = '实时: ';
+        if (result.gated) {
+          line += '静音/无语音';
+        } else if (isKw && result.confidence >= 0.72) {
+          line += '识别到「' + result.label + '」 ' + pct + '%';
+          notifyKeyword(result.label, result.confidence, '实时');
+        } else if (isKw) {
+          line += '弱信号「' + result.label + '」 ' + pct + '%';
+        } else {
+          line += '未识别 ' + pct + '%';
+        }
+        // Show all keyword scores compactly
+        var kwParts = [];
+        Object.keys(result.scores).forEach(function(k) {
+          if (k !== 'unknown') {
+            var s = (result.scores[k] * 100).toFixed(0);
+            kwParts.push(k + ':' + s + '%');
+          }
+        });
+        if (kwParts.length > 0) {
+          line += ' | ' + kwParts.join(' ');
+        }
+        const levelPct = (currentInputLevel * 100).toFixed(0);
+        statusEl.textContent = line + ' | 音量 ' + levelPct + '%';
+      } catch(e) {
+        // silent fail on real-time inference errors
+      }
+    }
+
+    async function recordStart() {
+      try {
+        await ensureAudioGraph();
+        resizeCanvas();
+        pcmChunks = [];
+        rtBuffer = new Float32Array(0);
+        rtFrameCount = 0;
+        rtBestLabel = '';
+        rtBestConf = 0;
+        lastRawPeak = 0;
+        recording = true;
+        startWave();
+        labelEl.textContent = '正在录音 · 实时识别中';
+        resultCopyEl.textContent = '说出关键词，系统会实时显示识别结果。停止后会再做一次完整分析。';
+        confidenceEl.textContent = '-';
+        peakEl.textContent = '-';
+        scoresEl.innerHTML = '';
+        statusEl.textContent = '实时: 等待语音... | 音量 0%';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+      } catch (err) {
+        statusEl.textContent = `无法访问麦克风：${err.message}`;
+        resultCopyEl.textContent = '请确认浏览器已允许麦克风权限，并切换到正确的输入设备。';
+      }
+    }
+
+    function flattenPcmChunks() {
+      let total = 0;
+      pcmChunks.forEach(c => total += c.length);
+      const merged = new Float32Array(total);
+      let offset = 0;
+      pcmChunks.forEach(c => {
+        merged.set(c, offset);
+        offset += c.length;
+      });
+      return merged;
+    }
+
+    function float32ToInt16(arr) {
+      const out = new Int16Array(arr.length);
+      for (let i = 0; i < arr.length; i++) {
+        const v = Math.round(arr[i]);
+        out[i] = v > 32767 ? 32767 : (v < -32768 ? -32768 : v);
+      }
+      return out;
+    }
+
+    async function recordStop() {
+      recording = false;
+      stopWave();
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      statusEl.textContent = '正在分析刚才这句话';
+      try {
+        const merged = flattenPcmChunks();
+        if (merged.length === 0) {
+          throw new Error('录音数据为空，请确认麦克风正常工作并延长录音时间');
+        }
+        var rawMax = 0, rawSumSq = 0;
+        for (var di = 0; di < merged.length; di++) { var da = Math.abs(merged[di]); if (da > rawMax) rawMax = da; rawSumSq += merged[di] * merged[di]; }
+        var rawRms = Math.sqrt(rawSumSq / merged.length);
+        console.log('PCM diag:', JSON.stringify({samples: merged.length, rawMax: rawMax, rawRms: rawRms, rawPeak: lastRawPeak, sr: audioCtx.sampleRate}));
+
+        const pcm16 = float32ToInt16(merged.map(v => v * 32767));
+        const resampled = linearResample(new Float32Array(pcm16), audioCtx.sampleRate, TARGET_SR);
+        const frame = prepareFrame(float32ToInt16(resampled));
+        if (!window.MODEL_DATA) {
+          throw new Error('模型数据未加载，请确认 model_data.js 文件存在');
+        }
+        const peak = frame.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+        const rawPeak = Math.round(lastRawPeak * 32767);
+
+        // Energy gate: near-silence is automatically "unknown", skip model inference.
+        // Without this, the model may misclassify silence as a keyword because
+        // it was never trained on pure silence samples.
+        const SILENCE_PEAK = 100; // int16 peak threshold (~0.3% of full scale)
+        var result;
+        if (peak < SILENCE_PEAK) {
+          const labels = window.MODEL_DATA.labels;
+          const unkIdx = labels.indexOf('unknown');
+          const scores = {};
+          labels.forEach(function(l, i) { scores[l] = (i === unkIdx) ? 1.0 : 0.0; });
+          result = { label: 'unknown', confidence: 1.0, scores: scores, gated: true };
+        } else {
+          const feat = runtimeLikeFeatures(frame);
+          result = inferFeature(feat);
+        }
+
+        // Send to backend for comparison
+        statusEl.textContent = '正在对比后端推理结果...';
+        const backendResult = await compareWithBackend(merged, audioCtx.sampleRate);
+
+        const isKeyword = result.label !== 'unknown';
+        // Find top-2 keywords for multi-keyword context
+        var kwScores = [];
+        Object.keys(result.scores).forEach(function(k) {
+          if (k !== 'unknown') kwScores.push({ label: k, score: result.scores[k] });
+        });
+        kwScores.sort(function(a, b) { return b.score - a.score; });
+        var topKwText = kwScores.slice(0, 2).map(function(s) {
+          return s.label + ' ' + (s.score * 100).toFixed(0) + '%';
+        }).join(' / ');
+        if (result.gated) {
+          labelEl.textContent = '静音/无语音';
+          resultCopyEl.textContent = '录音能量过低，判定为静音。请确认麦克风已启用并对着话筒说话。';
+        } else if (isKeyword && result.confidence >= STRONG_THRESHOLD) {
+          labelEl.textContent = '识别到「' + result.label + '」';
+          resultCopyEl.textContent = '这段录音和当前关键词模型高度接近，判断比较稳定。' + (kwScores.length > 1 ? ' 所有关键词得分: ' + topKwText : '');
+          notifyKeyword(result.label, result.confidence, '完整分析');
+        } else if (isKeyword && result.confidence >= ACCEPT_THRESHOLD) {
+          labelEl.textContent = '接近「' + result.label + '」';
+          resultCopyEl.textContent = '系统倾向于认为你说出了目标词，但这次置信度不高，结果仍有波动。' + (kwScores.length > 1 ? ' 各关键词: ' + topKwText : '');
+          notifyKeyword(result.label, result.confidence, '完整分析');
+        } else if (isKeyword) {
+          labelEl.textContent = '微弱「' + result.label + '」';
+          resultCopyEl.textContent = '检测到关键词信号但置信度偏低，建议多录几遍或加大音量。' + (kwScores.length > 1 ? ' 各关键词: ' + topKwText : '');
+        } else {
+          labelEl.textContent = '结果不确定';
+          var hint = '模型判为 unknown(置信度' + (result.confidence * 100).toFixed(0) + '%)，录音未命中任何关键词。';
+          hint += 'peak=' + peak + ' rawPcmMax=' + (rawMax*32767).toFixed(0);
+          // Add actionable hints when confidence is low
+          if (kwScores.length > 0) {
+            var bestKw = kwScores[0];
+            if (bestKw.score > 0.1) {
+              hint += '。提示: 关键词「' + bestKw.label + '」得分 ' + (bestKw.score * 100).toFixed(0) + '%';
+              hint += '，建议增加该关键词的样本数量并重新训练。';
+            } else {
+              hint += '。建议: 确保每个关键词录制10条以上样本，并录制足量非关键词样本后重新训练。';
+            }
+          } else {
+            hint += '。建议: 先录制关键词和非关键词样本，然后点击训练模型。';
+          }
+          resultCopyEl.textContent = hint;
+        }
+
+        var diagInfo = '前端: ' + (result.confidence * 100).toFixed(1) + '% (' + result.label + ')';
+        if (result.gated) diagInfo += ' [能量门控]';
+        if (backendResult && !backendResult.error) {
+          diagInfo += ' | 后端: ' + (backendResult.confidence * 100).toFixed(1) + '% (' + backendResult.label + ')';
+          if (!result.gated && Math.abs(result.confidence - backendResult.confidence) > 0.15) {
+            diagInfo += ' [差异大!]';
+          }
+        } else if (backendResult && backendResult.error) {
+          diagInfo += ' | 后端错误: ' + backendResult.error;
+        } else {
+          diagInfo += ' | 后端: 未连接';
+        }
+
+        confidenceEl.textContent = (result.confidence * 100).toFixed(1) + '%';
+        peakEl.textContent = peak + ' / raw ' + rawPeak + ' | PCM max ' + (rawMax*32767).toFixed(0) + ' rms ' + (rawRms*32767).toFixed(0);
+        renderScores(result.scores);
+        statusEl.textContent = diagInfo;
+      } catch (err) {
+        console.error('recordStop error:', err);
+        statusEl.textContent = '识别失败：' + err.message;
+        resultCopyEl.textContent = '错误详情: ' + err.message;
+      }
+    }
+
+    async function compareWithBackend(merged, srcSr) {
+      try {
+        const wavBytes = float32ToWav(merged, srcSr);
+        const blob = new Blob([wavBytes], { type: 'audio/wav' });
+        const form = new FormData();
+        form.append('audio', blob, 'record.wav');
+        const resp = await fetch('/infer', { method: 'POST', body: form });
+        if (!resp.ok) {
+          var errText = '';
+          try { errText = await resp.text(); } catch(ee) { errText = 'unreadable'; }
+          return { error: 'HTTP ' + resp.status + ' ' + errText };
+        }
+        return await resp.json();
+      } catch (e) {
+        return { error: e.message || String(e) };
+      }
+    }
+
+    function float32ToWav(samples, sampleRate) {
+      const numChannels = 1;
+      const bitsPerSample = 16;
+      const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+      const blockAlign = numChannels * bitsPerSample / 8;
+      const dataSize = samples.length * blockAlign;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+      function writeStr(offset, str) {
+        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+      }
+      writeStr(0, 'RIFF');
+      view.setUint32(4, 36 + dataSize, true);
+      writeStr(8, 'WAVE');
+      writeStr(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numChannels, true);
+      view.setUint32(24, sampleRate, true);
+      view.setUint32(28, byteRate, true);
+      view.setUint16(32, blockAlign, true);
+      view.setUint16(34, bitsPerSample, true);
+      writeStr(36, 'data');
+      view.setUint32(40, dataSize, true);
+      let offset = 44;
+      for (let i = 0; i < samples.length; i++) {
+        const s = Math.max(-1, Math.min(1, samples[i]));
+        const intSample = s < 0 ? s * 32768 : s * 32767;
+        view.setInt16(offset, Math.round(intSample), true);
+        offset += 2;
+      }
+      return buffer;
+    }
+
+    // ── Toast notification ────────────────────────────────────────────────────
+    const toastQueue = [];
+    let toastTimer = null;
+
+    function showToast(text, type) {
+      type = type || 'success';
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      el.className = 'toast' + (type === 'warn' ? ' warn' : '');
+      el.textContent = text;
+      el.addEventListener('click', function() { el.remove(); });
+      container.appendChild(el);
+      setTimeout(function() {
+        if (el.parentNode) el.remove();
+      }, 3000);
+
+      // Browser notification (if granted)
+      if (Notification.permission === 'granted') {
+        try { new Notification('关键词识别', { body: text, icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎤</text></svg>' }); } catch(e) {}
+      }
+    }
+
+    // Debounced notification to avoid spam during real-time inference
+    let lastNotifyLabel = '';
+    let lastNotifyTime = 0;
+
+    function notifyKeyword(label, confidence, source) {
+      const now = Date.now();
+      // Only notify once per keyword per 3 seconds
+      if (label === lastNotifyLabel && now - lastNotifyTime < 3000) return;
+      lastNotifyLabel = label;
+      lastNotifyTime = now;
+      const pct = (confidence * 100).toFixed(0);
+      const ctx = source || '实时';
+      showToast('[' + ctx + '] 识别到「' + label + '」置信度 ' + pct + '%', 'success');
+
+      // Trigger serial output if connected and confidence meets threshold
+      notifySerialKeyword(label, confidence);
+    }
+
+    // Request notification permission on first interaction
+    function requestNotifyPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+    document.addEventListener('click', requestNotifyPermission, { once: true });
+
+    async function runBatchEval() {
+      batchBtn.disabled = true;
+      batchText.textContent = '正在执行批量验证...';
+      try {
+        const data = await apiFetch('/batch_eval');
+        if (data.error) {
+          batchText.textContent = '批量验证失败: ' + data.error;
+          return;
+        }
+        const acc = ((data.accuracy || 0) * 100).toFixed(1);
+        const total = data.total || 0;
+        const correct = data.correct || 0;
+        const mismatches = (data.details || []).filter(item => item.expected !== item.predicted);
+        if (total === 0) {
+          batchText.textContent = '数据集为空，暂无可验证样本。';
+          return;
+        }
+        let summary = `准确率 ${acc}% (${correct}/${total})`;
+        if (mismatches.length > 0) {
+          const sampleText = mismatches.slice(0, 3).map(item =>
+            `${item.file}: ${item.expected} -> ${item.predicted} (${(item.confidence * 100).toFixed(1)}%)`
+          ).join('；');
+          summary += `；错例: ${sampleText}`;
+        } else {
+          summary += '；当前展示样本全部预测正确。';
+        }
+        batchText.textContent = summary;
+      } catch (e) {
+        batchText.textContent = '批量验证失败: ' + e.message;
+      } finally {
+        batchBtn.disabled = false;
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    drawAmbientLines();
+    micSelect.addEventListener('change', async () => {
+      selectedDeviceId = micSelect.value;
+      recording = false;
+      stopWave();
+      teardownAudioGraph();
+      if (audioCtx) {
+        await audioCtx.close();
+        audioCtx = null;
+      }
+      releaseStream();
+      statusEl.textContent = '输入设备已切换，请重新开始录音';
+    });
+    startBtn.addEventListener('click', recordStart);
+    stopBtn.addEventListener('click', recordStop);
+    batchBtn.addEventListener('click', runBatchEval);
+
+    // ── Keyword recording & training ────────────────────────────────────────────
+
+    let kwRecording = false;
+    let kwPcmChunks = [];
+    let serverHasApi = false;
+
+    async function apiFetch(url, opts) {
+      const r = await fetch(url, opts || {});
+      const text = await r.text();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        // If response is HTML, likely wrong server (app.py instead of run_server.py)
+        if (text.trim().startsWith('<!') || text.trim().startsWith('<html')) {
+          throw new Error('API 不可用，请确认用 run_server.py 启动服务（而非 app.py）');
+        }
+        throw new Error('API 响应异常: ' + text.slice(0, 100));
+      }
+    }
+
+    async function checkServerApi() {
+      try {
+        const data = await apiFetch('/api/keywords');
+        serverHasApi = !!(data && data.keywords);
+        if (serverHasApi) {
+          console.log('[Check] Server API OK');
+        }
+      } catch(e) {
+        serverHasApi = false;
+        console.warn('[Check] Server API NOT available:', e.message);
+        trainStatusEl.textContent = '提示: 请用 run_server.py 启动服务器以启用训练/编译功能';
+      }
+    }
+    checkServerApi();
+
+    async function refreshKwList() {
+      try {
+        const data = await apiFetch('/api/keywords');
+        if (data.keywords && data.keywords.length > 0) {
+          kwListEl.innerHTML = data.keywords.map(k =>
+            `<span>${k.name} (${k.samples}) <a href="javascript:void(0)" onclick="deleteKeyword('${k.name}')" style="color:#ff6b6b;margin-left:4px;text-decoration:none;font-size:11px;">&#10005;</a></span>`
+          ).join('');
+        } else {
+          kwListEl.textContent = '暂无关键词数据';
+        }
+        // Also update serial command list
+        updateSerialCmdList();
+      } catch(e) {
+        kwListEl.textContent = '加载失败';
+      }
+    }
+
+    async function deleteKeyword(name) {
+      if (!confirm('确定删除关键词 "' + name + '" 及全部 ' + '个样本？')) return;
+      trainStatusEl.textContent = '删除中...';
+      try {
+        const form = new FormData();
+        form.append('keyword', name);
+        const data = await apiFetch('/api/delete_keyword', { method: 'POST', body: form });
+        if (data.ok) {
+          trainStatusEl.textContent = '已删除: ' + name;
+        } else {
+          trainStatusEl.textContent = '删除失败: ' + (data.error || 'unknown');
+        }
+      } catch(e) {
+        trainStatusEl.textContent = '删除失败: ' + e.message;
+      }
+      refreshKwList();
+    }
+
+    async function kwRecordStart() {
+      const name = kwNameEl.value.trim();
+      if (!name) { trainStatusEl.textContent = '请输入关键词名称'; return; }
+      try {
+        await ensureAudioGraph();
+        kwPcmChunks = [];
+        kwRecording = true;
+        kwRecordBtn.textContent = '停止录制';
+        kwRecordBtn.style.background = 'rgba(255,80,80,0.2)';
+        kwNameEl.disabled = true;
+        kwTrainBtn.disabled = true;
+        trainStatusEl.textContent = '正在录制... 说关键词后点击停止';
+        startWave();
+        statusEl.textContent = '录制训练样本中...';
+      } catch(err) {
+        trainStatusEl.textContent = '麦克风错误: ' + err.message;
+      }
+    }
+
+    async function kwRecordStop() {
+      if (!kwRecording) return;
+      kwRecording = false;
+      stopWave();
+      kwRecordBtn.textContent = '录制样本';
+      kwRecordBtn.style.background = '';
+      kwNameEl.disabled = false;
+      kwTrainBtn.disabled = false;
+
+      const name = kwNameEl.value.trim();
+      // Merge chunks into WAV and send
+      let total = 0;
+      kwPcmChunks.forEach(c => total += c.length);
+      if (total === 0) {
+        trainStatusEl.textContent = '录音为空，请重试';
+        return;
+      }
+      const merged = new Float32Array(total);
+      let off = 0;
+      kwPcmChunks.forEach(c => { merged.set(c, off); off += c.length; });
+
+      trainStatusEl.textContent = '保存中...';
+      try {
+        const wavBytes = float32ToWav(merged, audioCtx.sampleRate);
+        const blob = new Blob([wavBytes], { type: 'audio/wav' });
+        const form = new FormData();
+        form.append('audio', blob, 'record.wav');
+        form.append('keyword', name);
+        const data = await apiFetch('/api/record', { method: 'POST', body: form });
+        if (data.ok) {
+          trainStatusEl.textContent = `已保存: ${data.file} (共 ${data.total_samples} 条)`;
+        } else {
+          trainStatusEl.textContent = '保存失败: ' + (data.error || 'unknown');
+        }
+      } catch(e) {
+        trainStatusEl.textContent = '上传失败: ' + e.message;
+      }
+      refreshKwList();
+      statusEl.textContent = '等待录音';
+    }
+
+    // Toggle: click to start recording, click again to stop
+    kwRecordBtn.addEventListener('click', () => {
+      if (kwUnknownRecording) return; // don't overlap with unknown recording
+      if (!kwRecording) {
+        kwRecordStart();
+      } else {
+        kwRecordStop();
+      }
+    });
+
+    // ── Record unknown (non-keyword) samples ────────────────────────────────
+    let kwUnknownRecording = false;
+
+    async function kwUnknownRecordStart() {
+      try {
+        await ensureAudioGraph();
+        kwPcmChunks = [];
+        kwUnknownRecording = true;
+        kwRecordUnknownBtn.textContent = '停止录制';
+        kwRecordUnknownBtn.style.background = 'rgba(255,80,80,0.2)';
+        kwNameEl.disabled = true;
+        kwRecordBtn.disabled = true;
+        kwTrainBtn.disabled = true;
+        trainStatusEl.textContent = '正在录制非关键词... 说任意话但不要说关键词';
+        startWave();
+        statusEl.textContent = '录制非关键词样本中...';
+      } catch(err) {
+        trainStatusEl.textContent = '麦克风错误: ' + err.message;
+      }
+    }
+
+    async function kwUnknownRecordStop() {
+      if (!kwUnknownRecording) return;
+      kwUnknownRecording = false;
+      stopWave();
+      kwRecordUnknownBtn.textContent = '录制非关键词';
+      kwRecordUnknownBtn.style.background = '';
+      kwNameEl.disabled = false;
+      kwRecordBtn.disabled = false;
+      kwTrainBtn.disabled = false;
+
+      let total = 0;
+      kwPcmChunks.forEach(c => total += c.length);
+      if (total === 0) {
+        trainStatusEl.textContent = '录音为空，请重试';
+        return;
+      }
+      const merged = new Float32Array(total);
+      let off = 0;
+      kwPcmChunks.forEach(c => { merged.set(c, off); off += c.length; });
+
+      trainStatusEl.textContent = '保存非关键词中...';
+      try {
+        const wavBytes = float32ToWav(merged, audioCtx.sampleRate);
+        const blob = new Blob([wavBytes], { type: 'audio/wav' });
+        const form = new FormData();
+        form.append('audio', blob, 'record.wav');
+        form.append('keyword', 'unknown');
+        const data = await apiFetch('/api/record', { method: 'POST', body: form });
+        if (data.ok) {
+          trainStatusEl.textContent = `已保存非关键词: ${data.file} (共 ${data.total_samples} 条)`;
+        } else {
+          trainStatusEl.textContent = '保存失败: ' + (data.error || 'unknown');
+        }
+      } catch(e) {
+        trainStatusEl.textContent = '上传失败: ' + e.message;
+      }
+      refreshKwList();
+      statusEl.textContent = '等待录音';
+    }
+
+    kwRecordUnknownBtn.addEventListener('click', () => {
+      if (kwRecording) return; // don't overlap with keyword recording
+      if (!kwUnknownRecording) {
+        kwUnknownRecordStart();
+      } else {
+        kwUnknownRecordStop();
+      }
+    });
+
+    // Also capture PCM in the existing onaudioprocess for kw recording
+    // We hook into the existing processorNode by adding a kw flag check
+    const _origOnaudioprocess = null; // placeholder, we modify below
+
+    kwTrainBtn.addEventListener('click', async () => {
+      kwTrainBtn.disabled = true;
+      trainStatusEl.textContent = '启动训练...';
+      try {
+        const data = await apiFetch('/api/train', { method: 'POST' });
+        if (data.ok) {
+          trainStatusEl.textContent = '训练已启动，轮询状态中...';
+          pollTrainStatus();
+        } else {
+          trainStatusEl.textContent = '启动失败: ' + (data.error || 'unknown');
+          kwTrainBtn.disabled = false;
+        }
+      } catch(e) {
+        trainStatusEl.textContent = '请求失败: ' + e.message;
+        kwTrainBtn.disabled = false;
+      }
+    });
+
+    kwCompileBtn.addEventListener('click', async () => {
+      kwCompileBtn.disabled = true;
+      trainStatusEl.textContent = '正在编译嵌入式设备（耳机端）权重...';
+      try {
+        const data = await apiFetch('/api/compile', { method: 'POST' });
+        if (data.ok) {
+          trainStatusEl.textContent = '编译已启动，轮询状态中...';
+          pollCompileStatus();
+        } else {
+          trainStatusEl.textContent = '编译失败: ' + (data.error || 'unknown');
+          kwCompileBtn.disabled = false;
+        }
+      } catch(e) {
+        trainStatusEl.textContent = '请求失败: ' + e.message;
+        kwCompileBtn.disabled = false;
+      }
+    });
+
+    function pollCompileStatus() {
+      const timer = setInterval(async () => {
+        try {
+          const data = await apiFetch('/api/train_status');
+          trainStatusEl.textContent = data.message || (data.error ? '错误: ' + data.error : '...');
+          if (!data.running) {
+            clearInterval(timer);
+            kwCompileBtn.disabled = false;
+            if (data.error) {
+              trainStatusEl.textContent = '编译失败: ' + data.error;
+            } else {
+              trainStatusEl.textContent = '嵌入式设备（耳机端）权重已生成！输出目录: generated/';
+            }
+          }
+        } catch(e) {
+          trainStatusEl.textContent = '状态查询失败';
+          clearInterval(timer);
+          kwCompileBtn.disabled = false;
+        }
+      }, 1500);
+    }
+
+    function pollTrainStatus() {
+      const timer = setInterval(async () => {
+        try {
+          const data = await apiFetch('/api/train_status');
+          trainStatusEl.textContent = data.message || (data.error ? '错误: ' + data.error : '...');
+          if (!data.running) {
+            clearInterval(timer);
+            kwTrainBtn.disabled = false;
+            kwCompileBtn.disabled = false;
+            if (data.error) {
+              trainStatusEl.textContent = '训练失败: ' + data.error;
+            } else {
+              trainStatusEl.textContent = '训练完成！模型已重新加载。';
+              refreshKwList();
+            }
+          }
+        } catch(e) {
+          trainStatusEl.textContent = '状态查询失败';
+          clearInterval(timer);
+          kwTrainBtn.disabled = false;
+          kwCompileBtn.disabled = false;
+        }
+      }, 2000);
+    }
+
+    // Extend the existing onaudioprocess to also capture kw recording PCM
+    function installKwPcmHook() {
+      const origEnsure = ensureAudioGraph;
+      ensureAudioGraph = async function() {
+        await origEnsure();
+        const origHandler = processorNode.onaudioprocess;
+        processorNode.onaudioprocess = (event) => {
+          if (origHandler) origHandler(event);
+          if (kwRecording || kwUnknownRecording) {
+            const input = event.inputBuffer.getChannelData(0);
+            kwPcmChunks.push(new Float32Array(input));
+          }
+        };
+      };
+    }
+    installKwPcmHook();
+
+    // ── Serial port functions ──────────────────────────────────────────────────
+
+    let serialConnected = false;
+    let serialCommands = {};  // keyword -> command
+
+    // Parse escaped \r \n in command string to actual control chars
+    function parseCommand(cmdStr) {
+      return cmdStr.replace(/\\r/g, '\r').replace(/\\n/g, '\n');
+    }
+
+    // Refresh serial port list
+    async function refreshSerialPorts() {
+      try {
+        var data = await apiFetch('/api/serial/ports');
+        var ports = data.ports || [];
+        var currentVal = serialPortEl.value;
+        serialPortEl.innerHTML = '';
+        if (ports.length === 0) {
+          var opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = '-- 未检测到串口 --';
+          serialPortEl.appendChild(opt);
+        } else {
+          var opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = '-- 选择串口 --';
+          serialPortEl.appendChild(opt);
+          ports.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.device;
+            opt.textContent = p.device + (p.description ? ' (' + p.description + ')' : '');
+            serialPortEl.appendChild(opt);
+          });
+        }
+        // Restore previous selection if still available
+        if (currentVal) {
+          for (var i = 0; i < serialPortEl.options.length; i++) {
+            if (serialPortEl.options[i].value === currentVal) {
+              serialPortEl.selectedIndex = i;
+              break;
+            }
+          }
+        }
+      } catch(e) {
+        console.warn('Serial ports refresh failed:', e.message);
+      }
+    }
+
+    // Update the per-keyword command input fields
+    function updateSerialCmdList() {
+      var labels = [];
+      if (window.MODEL_DATA && window.MODEL_DATA.labels) {
+        labels = window.MODEL_DATA.labels.filter(function(l) { return l !== 'unknown'; });
+      }
+      if (labels.length === 0) {
+        serialCmdListEl.innerHTML = '<div style="font-size:11px;color:var(--muted);">暂无关键词</div>';
+        return;
+      }
+      var html = '';
+      labels.forEach(function(l) {
+        var savedCmd = serialCommands[l] || '';
+        var escaped = savedCmd.replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+        html += '<div class="serial-cmd-row">' +
+          '<span class="kw-label">' + l + '</span>' +
+          '<input type="text" class="serial-cmd-input" data-kw="' + l + '" value="' + 
+          escaped.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') + 
+          '" placeholder="指令,如 AT+LED=1\\r\\n">' +
+        '</div>';
+      });
+      serialCmdListEl.innerHTML = html;
+
+      // Attach input listeners
+      var inputs = serialCmdListEl.querySelectorAll('.serial-cmd-input');
+      inputs.forEach(function(inp) {
+        inp.addEventListener('input', function() {
+          var kw = inp.getAttribute('data-kw');
+          serialCommands[kw] = parseCommand(inp.value);
+          if (serialConnected) {
+            syncSerialConfig();
+          }
+        });
+      });
+    }
+
+    // Sync threshold + commands to backend
+    async function syncSerialConfig() {
+      try {
+        await apiFetch('/api/serial/update_config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            threshold: parseFloat(serialThresholdEl.value) / 100,
+            commands: serialCommands,
+          }),
+        });
+      } catch(e) {
+        // silent
+      }
+    }
+
+    // Connect to serial port
+    serialConnectEl.addEventListener('click', async function() {
+      var port = serialPortEl.value;
+      if (!port) {
+        serialStatusEl.textContent = '请先选择串口';
+        return;
+      }
+      serialConnectEl.disabled = true;
+      serialStatusEl.textContent = '连接中...';
+      try {
+        var data = await apiFetch('/api/serial/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            port: port,
+            baudrate: parseInt(serialBaudEl.value),
+            threshold: parseFloat(serialThresholdEl.value) / 100,
+            commands: serialCommands,
+          }),
+        });
+        if (data.ok) {
+          serialConnected = true;
+          serialConnectEl.disabled = true;
+          serialDisconnectEl.disabled = false;
+          serialPortEl.disabled = true;
+          serialBaudEl.disabled = true;
+          serialIndicatorEl.className = 'serial-indicator on';
+          serialStatusEl.textContent = '已连接 ' + port + ' @ ' + serialBaudEl.value;
+          showToast('串口已连接: ' + port, 'success');
+        } else {
+          serialStatusEl.textContent = '连接失败: ' + (data.error || 'unknown');
+          serialConnectEl.disabled = false;
+        }
+      } catch(e) {
+        serialStatusEl.textContent = '连接失败: ' + e.message;
+        serialConnectEl.disabled = false;
+      }
+    });
+
+    // Disconnect serial port
+    serialDisconnectEl.addEventListener('click', async function() {
+      serialDisconnectEl.disabled = true;
+      try {
+        var data = await apiFetch('/api/serial/disconnect', { method: 'POST' });
+        if (data.ok) {
+          serialConnected = false;
+          serialConnectEl.disabled = false;
+          serialDisconnectEl.disabled = true;
+          serialPortEl.disabled = false;
+          serialBaudEl.disabled = false;
+          serialIndicatorEl.className = 'serial-indicator off';
+          serialStatusEl.textContent = '已断开';
+        }
+      } catch(e) {
+        serialStatusEl.textContent = '断开失败: ' + e.message;
+        serialDisconnectEl.disabled = false;
+      }
+    });
+
+    // Threshold slider
+    serialThresholdEl.addEventListener('input', function() {
+      serialThresholdValEl.textContent = serialThresholdEl.value + '%';
+    });
+    serialThresholdEl.addEventListener('change', function() {
+      if (serialConnected) {
+        syncSerialConfig();
+      }
+    });
+
+    // Refresh button
+    serialRefreshEl.addEventListener('click', refreshSerialPorts);
+
+    // Notify backend when keyword recognized (for serial output)
+    async function notifySerialKeyword(keyword, confidence) {
+      if (!serialConnected) return;
+      var threshold = parseFloat(serialThresholdEl.value) / 100;
+      if (confidence < threshold) return;
+      try {
+        await apiFetch('/api/serial/notify_keyword', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            keyword: keyword,
+            confidence: confidence,
+          }),
+        });
+      } catch(e) {
+        // silent
+      }
+    }
+
+    // Update topbar tag with model keyword labels
+    function updateTopbarTag() {
+      var tagEl = document.getElementById('topbarTag');
+      if (window.MODEL_DATA && window.MODEL_DATA.labels) {
+        var kwLabels = window.MODEL_DATA.labels.filter(function(l) { return l !== 'unknown'; });
+        tagEl.textContent = (kwLabels.length > 0 ? kwLabels.join(' / ') : '无关键词') + ' · raw PCM capture';
+      }
+    }
+    updateTopbarTag();
+
+    // Initialize serial panel
+    refreshSerialPorts();
+    updateSerialCmdList();
+
+    refreshKwList();
+    refreshDevices();
+
+    // ── Splitter drag resize ──────────────────────────────────────────
+    (function() {
+      const layout = document.querySelector('.layout');
+      const hero = document.querySelector('.hero');
+      const side = document.querySelector('.side');
+      const hSplitter = document.getElementById('hSplitter');
+      const vSplitter = document.getElementById('vSplitter');
+      const waveArea = document.querySelector('.wave-area');
+
+      if (!layout || !hero || !side || !hSplitter) return;
+
+      // --- Horizontal splitter (hero ↔ side) ---
+      let hDragging = false;
+      let hStartX, hStartHeroW, hStartSideW;
+
+      hSplitter.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        hDragging = true;
+        hSplitter.classList.add('active');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+        hStartX = e.clientX;
+        hStartHeroW = hero.getBoundingClientRect().width;
+        hStartSideW = side.getBoundingClientRect().width;
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!hDragging) return;
+        const dx = e.clientX - hStartX;
+        let newHeroW = hStartHeroW + dx;
+        let newSideW = hStartSideW - dx;
+
+        // Enforce minimum widths
+        if (newHeroW < 280) { newHeroW = 280; newSideW = hStartSideW - (newHeroW - hStartHeroW); }
+        if (newSideW < 220) { newSideW = 220; newHeroW = hStartHeroW + (hStartSideW - newSideW); }
+
+        // Respect container width
+        const totalW = layout.getBoundingClientRect().width - 10;
+        const avail = totalW - newSideW;
+        if (newHeroW > avail) newHeroW = avail;
+
+        side.style.width = newSideW + 'px';
+        hero.style.flex = '0 0 ' + newHeroW + 'px';
+      });
+
+      document.addEventListener('mouseup', function() {
+        if (!hDragging) return;
+        hDragging = false;
+        hSplitter.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        // Restore flex so it can shrink/grow with window resize
+        hero.style.flex = '1 1 0';
+        hero.style.minWidth = '280px';
+      });
+
+      // --- Vertical splitter (wave-stage ↔ controls) ---
+      if (!vSplitter || !waveArea) return;
+      let vDragging = false;
+      let vStartY, vStartAreaH, vStartCtrlH;
+
+      vSplitter.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        vDragging = true;
+        vSplitter.classList.add('active');
+        document.body.style.cursor = 'row-resize';
+        document.body.style.userSelect = 'none';
+        vStartY = e.clientY;
+        vStartAreaH = waveArea.getBoundingClientRect().height;
+        const controls = document.querySelector('.hero .controls');
+        vStartCtrlH = controls ? controls.getBoundingClientRect().height : 80;
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!vDragging) return;
+        const dy = e.clientY - vStartY;
+        let newAreaH = vStartAreaH + dy;
+
+        if (newAreaH < 80) newAreaH = 80;
+
+        const heroInner = document.querySelector('.hero-inner');
+        if (!heroInner) return;
+        const innerH = heroInner.getBoundingClientRect().height;
+        const maxAreaH = innerH - vStartCtrlH - 8;
+        if (newAreaH > maxAreaH) newAreaH = maxAreaH;
+
+        waveArea.style.flex = '0 0 ' + newAreaH + 'px';
+      });
+
+      document.addEventListener('mouseup', function() {
+        if (!vDragging) return;
+        vDragging = false;
+        vSplitter.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        waveArea.style.flex = '1 1 auto';
+      });
+    })();
+  </script>
+</body>
+</html>
